@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" fill="none">
+  <rect width="800" height="800" fill="#090909"/>
+  <defs>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#202124" stroke-width="0.5"/>
+    </pattern>
+  </defs>
+  <rect width="800" height="800" fill="url(#grid)"/>
+  <text x="400" y="380" text-anchor="middle" font-family="system-ui,sans-serif" font-size="28" fill="#D0D0D1">THE INK LAB</text>
+  <text x="400" y="430" text-anchor="middle" font-family="system-ui,sans-serif" font-size="16" fill="#909092">DEMO  Replace in Admin</text>
+  <line x1="100" y1="500" x2="300" y2="500" stroke="#0D97FC" stroke-width="3"/>
+  <line x1="100" y1="520" x2="280" y2="520" stroke="#DE4098" stroke-width="3"/>
+  <line x1="100" y1="540" x2="260" y2="540" stroke="#F3C722" stroke-width="3"/>
+  <line x1="100" y1="560" x2="240" y2="560" stroke="#090909" stroke-width="3"/>
+</svg>
