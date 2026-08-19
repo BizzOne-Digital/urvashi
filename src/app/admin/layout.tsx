@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { AdminLayoutClient } from "@/components/admin/AdminLayoutClient";
 
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
+
 export const metadata: Metadata = {
   robots: { index: false, follow: false },
   title: "Admin",
