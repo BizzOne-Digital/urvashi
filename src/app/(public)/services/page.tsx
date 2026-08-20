@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { PageHero } from "@/components/ui/PageHero";
 import { Container } from "@/components/ui/Container";
+import { VibrantSection } from "@/components/ui/VibrantSection";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { getPublishedServices } from "@/lib/public-data";
 
@@ -23,7 +24,7 @@ export default async function ServicesPage() {
         image="/demo/ink-lab.svg"
       />
 
-      <section className="py-20">
+      <VibrantSection variant="mesh">
         <Container>
           {services.length === 0 ? (
             <EmptyState
@@ -33,35 +34,37 @@ export default async function ServicesPage() {
               actionHref="/contact"
             />
           ) : (
-            <div className="grid gap-8 md:grid-cols-2">
+            <div className="grid gap-8 md:grid-cols-2" data-reveal-stagger>
               {services.map((service) => (
                 <Link
                   key={String(service._id)}
                   href={`/services/${service.slug}`}
-                  className="group grid overflow-hidden rounded-sm border border-chrome-light/60 md:grid-cols-5 transition-all hover:border-royal-blue hover:shadow-lg"
+                  className="group card-vibrant grid overflow-hidden md:grid-cols-5"
+                  data-reveal-item
                 >
-                  <div className="relative aspect-[4/3] bg-chrome-light/20 md:col-span-2 md:aspect-auto">
+                  <div className="relative aspect-[4/3] bg-gradient-to-br from-chrome-light/30 to-pure-paper md:col-span-2 md:aspect-auto">
                     {service.cardImage?.url && (
                       <Image
                         src={service.cardImage.url}
                         alt={service.title}
                         fill
-                        className="object-contain p-4 transition-transform group-hover:scale-105"
+                        className="object-contain p-4 transition-transform duration-500 group-hover:scale-110"
                         sizes="40vw"
                       />
                     )}
+                    <span className="absolute bottom-2 right-2 font-display text-sm font-bold italic text-royal-blue/80">DPM</span>
                   </div>
                   <div className="flex flex-col justify-center p-6 md:col-span-3">
-                    <h2 className="font-display text-xl font-semibold group-hover:text-royal-blue">{service.title}</h2>
+                    <h2 className="font-display text-xl font-semibold transition-colors group-hover:text-royal-blue">{service.title}</h2>
                     <p className="mt-2 text-sm text-carbon">{service.shortDescription}</p>
-                    <span className="mt-4 text-sm font-semibold text-royal-blue">Learn more →</span>
+                    <span className="mt-4 text-sm font-semibold text-cyan">Learn more →</span>
                   </div>
                 </Link>
               ))}
             </div>
           )}
         </Container>
-      </section>
+      </VibrantSection>
     </>
   );
 }

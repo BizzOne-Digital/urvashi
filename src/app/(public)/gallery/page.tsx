@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
+import { PageHero } from "@/components/ui/PageHero";
 import { Container } from "@/components/ui/Container";
+import { VibrantSection } from "@/components/ui/VibrantSection";
 import { GalleryGrid } from "@/components/gallery/GalleryGrid";
 import { DEMO_IMAGES, getGalleryItems, getGalleryCategories } from "@/lib/public-data";
+
 export const metadata: Metadata = {
   title: "Gallery",
   description: "Browse custom print samples and inspiration from DPM Custom Prints.",
@@ -27,20 +30,22 @@ export default async function GalleryPage() {
         }));
 
   return (
-    <section className="overflow-hidden py-12 lg:py-16">
-      <Container className="min-w-0">
-        <div className="mb-10 text-center">
-          <p className="text-sm font-semibold uppercase tracking-widest text-royal-blue">Portfolio</p>
-          <h1 className="heading-section mt-2">Print gallery</h1>
-          <p className="mx-auto mt-3 max-w-2xl text-carbon">
-            Samples and inspiration from our ink lab — mugs, apparel, gifts, and more.
-          </p>
-        </div>
+    <>
+      <PageHero
+        eyebrow="Portfolio"
+        title="Print gallery"
+        subtitle="Samples and inspiration from our ink lab — mugs, apparel, gifts, and more."
+        image="/demo/mug-white.svg"
+      />
 
-        <GalleryGrid
-          items={items}
-          categories={categories.map((c) => ({ slug: c.slug, name: c.name }))}
-        />
-      </Container>
-    </section>
-  );}
+      <VibrantSection variant="mesh" reveal={false}>
+        <Container className="min-w-0">
+          <GalleryGrid
+            items={items}
+            categories={categories.map((c) => ({ slug: c.slug, name: c.name }))}
+          />
+        </Container>
+      </VibrantSection>
+    </>
+  );
+}

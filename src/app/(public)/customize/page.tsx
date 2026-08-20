@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { PageHero } from "@/components/ui/PageHero";
 import { Container } from "@/components/ui/Container";
+import { VibrantSection } from "@/components/ui/VibrantSection";
 import { CustomizerStudio } from "@/components/customize/CustomizerStudio";
 import { getCachedSettings } from "@/lib/settings";
 import { getCustomizerProducts } from "@/lib/public-data";
@@ -22,15 +23,17 @@ export default async function CustomizePage() {
         image="/demo/mug-white.svg"
       />
 
-      <section className="py-16">
+      <VibrantSection variant="mesh" reveal={false}>
         <Container className="flex justify-center">
-          <CustomizerStudio
+          <div className="card-vibrant w-full max-w-lg p-4 sm:p-6" data-reveal>
+            <CustomizerStudio
             products={products.map((p) => ({ ...p, _id: String(p._id) }))}
             previewDisclaimer={settings.customization?.previewDisclaimer}
             rightsConfirmationCopy={settings.customization?.rightsConfirmationCopy}
-          />
+            />
+          </div>
         </Container>
-      </section>
+      </VibrantSection>
     </>
   );
 }

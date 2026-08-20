@@ -35,29 +35,37 @@ export function FaqAccordion({ faqs }: FaqAccordionProps) {
         placeholder="Search questions…"
         value={search}
         onChange={(e) => setSearch(e.target.value)}
-        className="mb-8 w-full rounded-sm border border-chrome-light bg-pure-paper px-4 py-3 text-sm focus:border-royal-blue focus:outline-none focus:ring-1 focus:ring-royal-blue"
+        className="mb-8 w-full rounded-sm border border-chrome-light bg-pure-paper px-4 py-3 text-sm shadow-sm transition-all focus:border-royal-blue focus:outline-none focus:ring-2 focus:ring-royal-blue/30"
+        data-reveal
       />
 
       {filtered.length === 0 ? (
         <p className="text-carbon">No FAQs match your search.</p>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-3" data-reveal-stagger>
           {filtered.map((faq) => {
             const id = String(faq._id);
             const isOpen = openId === id;
             return (
-              <div key={id} className="rounded-sm border border-chrome-light/60 overflow-hidden">
+              <div key={id} className="card-vibrant overflow-hidden" data-reveal-item>
                 <button
                   type="button"
                   onClick={() => setOpenId(isOpen ? null : id)}
-                  className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left font-semibold hover:bg-chrome-light/10"
+                  className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left font-semibold transition-colors hover:bg-royal-blue/5"
                   aria-expanded={isOpen}
                 >
                   <span>{faq.question}</span>
-                  <span className={cn("text-royal-blue transition-transform", isOpen && "rotate-45")}>+</span>
+                  <span
+                    className={cn(
+                      "flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-royal-blue to-cyan text-lg font-bold text-pure-paper transition-transform",
+                      isOpen && "rotate-45"
+                    )}
+                  >
+                    +
+                  </span>
                 </button>
                 {isOpen && (
-                  <div className="border-t border-chrome-light/40 px-5 py-4 text-sm text-carbon leading-relaxed">
+                  <div className="border-t border-chrome-light/40 bg-chrome-light/5 px-5 py-4 text-sm leading-relaxed text-carbon">
                     {faq.answer}
                   </div>
                 )}

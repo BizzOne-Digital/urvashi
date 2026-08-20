@@ -79,7 +79,8 @@ export function Footer({ settings }: { settings: FooterSettings }) {
     `© ${new Date().getFullYear()} ${settings.businessName}`;
 
   return (
-    <footer className="mt-auto min-w-0 overflow-x-clip border-t border-chrome-light/60 bg-carbon text-pure-paper">
+    <footer className="relative mt-auto min-w-0 overflow-x-clip border-t border-chrome-light/60 bg-carbon text-pure-paper">
+      <div className="cmyk-line absolute inset-x-0 top-0" aria-hidden />
       <Container className="min-w-0 py-12 lg:py-16">
         <div className="grid min-w-0 gap-10 lg:grid-cols-12 lg:gap-8">
           <div className="lg:col-span-5">

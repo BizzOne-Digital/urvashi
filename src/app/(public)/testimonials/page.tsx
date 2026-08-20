@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import { PageHero } from "@/components/ui/PageHero";
 import { Container } from "@/components/ui/Container";
+import { VibrantSection } from "@/components/ui/VibrantSection";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { getPublishedTestimonials } from "@/lib/public-data";
 
@@ -32,14 +33,14 @@ export default async function TestimonialsPage() {
         image="/demo/ink-lab.svg"
       />
 
-      <section className="py-16">
+      <VibrantSection variant="mesh">
         <Container>
           {testimonials.length === 0 ? (
             <EmptyState title="No testimonials yet" description="Customer reviews will appear here once published." />
           ) : (
-            <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3" data-reveal-stagger>
               {testimonials.map((t) => (
-                <article key={String(t._id)} className="rounded-sm border border-chrome-light/60 bg-pure-paper p-6 shadow-sm">
+                <article key={String(t._id)} className="card-vibrant p-6" data-reveal-item>
                   {t.image?.url && (
                     <div className="relative mb-4 aspect-video overflow-hidden rounded-sm bg-chrome-light/20">
                       <Image src={t.image.url} alt={t.customerName} fill className="object-contain p-4" sizes="33vw" />
@@ -58,7 +59,7 @@ export default async function TestimonialsPage() {
             </div>
           )}
         </Container>
-      </section>
+      </VibrantSection>
     </>
   );
 }

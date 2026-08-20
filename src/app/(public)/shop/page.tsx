@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { PageHero } from "@/components/ui/PageHero";
 import { Container } from "@/components/ui/Container";
+import { VibrantSection } from "@/components/ui/VibrantSection";
 import { ProductGrid } from "@/components/shop/ProductGrid";
 import { ShopFilters } from "@/components/shop/ShopFilters";
 import { getShopProducts, getProductCategories } from "@/lib/public-data";
@@ -47,18 +48,20 @@ export default async function ShopPage({ searchParams }: Props) {
         image="/demo/mug-white.svg"
       />
 
-      <section className="py-12">
+      <VibrantSection variant="mesh" reveal={false}>
         <Container>
-          <Suspense fallback={<div className="h-16 animate-pulse rounded-sm bg-chrome-light/30" />}>
-            <ShopFilters
-              categories={categories.map((c) => ({ slug: c.slug, name: c.name }))}
-              currentCategory={params.category}
-              currentSearch={params.search}
-              currentSort={params.sort}
-            />
+          <Suspense fallback={<div className="card-vibrant mb-8 h-16 animate-pulse p-4" data-reveal />}>
+            <div className="card-vibrant mb-8 p-4 sm:p-6" data-reveal>
+              <ShopFilters
+                categories={categories.map((c) => ({ slug: c.slug, name: c.name }))}
+                currentCategory={params.category}
+                currentSearch={params.search}
+                currentSort={params.sort}
+              />
+            </div>
           </Suspense>
 
-          <p className="mt-6 text-sm text-chrome-mid">{total} product{total !== 1 ? "s" : ""}</p>
+          <p className="mt-6 text-sm font-medium text-chrome-mid" data-reveal>{total} product{total !== 1 ? "s" : ""}</p>
 
           <div className="mt-8">
             <ProductGrid products={products.map((p) => ({ ...p, _id: String(p._id) }))} />
@@ -86,7 +89,7 @@ export default async function ShopPage({ searchParams }: Props) {
             </nav>
           )}
         </Container>
-      </section>
+      </VibrantSection>
     </>
   );
 }

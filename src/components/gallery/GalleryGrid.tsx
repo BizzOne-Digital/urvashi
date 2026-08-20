@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import Image from "next/image";
 import { GalleryLightbox, type GalleryItem } from "@/components/gallery/GalleryLightbox";
+import { DpmProductMark } from "@/components/ui/DpmProductImage";
 import { cn } from "@/lib/utils";
 
 interface GalleryGridProps {
@@ -35,13 +36,15 @@ export function GalleryGrid({ items, categories }: GalleryGridProps) {
 
   return (
     <>
-      <div className="mb-8 flex flex-wrap gap-2">
+      <div className="mb-8 flex flex-wrap gap-2" data-reveal>
         <button
           type="button"
           onClick={() => setCategory("")}
           className={cn(
-            "rounded-sm px-4 py-2 text-sm font-medium transition-colors",
-            !category ? "bg-royal-blue text-pure-paper" : "bg-chrome-light/30 hover:bg-chrome-light/50"
+            "rounded-sm px-4 py-2 text-sm font-semibold transition-all",
+            !category
+              ? "bg-gradient-to-r from-royal-blue to-cyan text-pure-paper shadow-lg"
+              : "bg-chrome-light/30 hover:bg-chrome-light/50"
           )}
         >
           All
@@ -52,8 +55,10 @@ export function GalleryGrid({ items, categories }: GalleryGridProps) {
             type="button"
             onClick={() => setCategory(c.slug)}
             className={cn(
-              "rounded-sm px-4 py-2 text-sm font-medium transition-colors",
-              category === c.slug ? "bg-royal-blue text-pure-paper" : "bg-chrome-light/30 hover:bg-chrome-light/50"
+              "rounded-sm px-4 py-2 text-sm font-semibold transition-all",
+              category === c.slug
+                ? "bg-gradient-to-r from-royal-blue to-cyan text-pure-paper shadow-lg"
+                : "bg-chrome-light/30 hover:bg-chrome-light/50"
             )}
           >
             {c.name}
@@ -64,21 +69,24 @@ export function GalleryGrid({ items, categories }: GalleryGridProps) {
       {filtered.length === 0 ? (
         <p className="text-carbon">No gallery images in this category yet.</p>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4" data-reveal-stagger>
           {filtered.map((item, index) => (
             <button
               key={item.id}
               type="button"
               onClick={() => setLightboxIndex(index)}
-              className="group relative aspect-square overflow-hidden rounded-sm border border-chrome-light/60 bg-chrome-light/10 transition-all hover:border-royal-blue hover:shadow-lg"
+              className="group card-vibrant relative aspect-square overflow-hidden bg-gradient-to-br from-chrome-light/20 to-pure-paper"
+              data-reveal-item
             >
               <Image
                 src={item.url}
                 alt={item.alt || "Gallery image"}
                 fill
-                className="object-contain p-3 transition-transform group-hover:scale-105"
+                className="object-contain p-3 transition-transform duration-500 group-hover:scale-110"
                 sizes="25vw"
               />
+              <DpmProductMark size="sm" />
+              <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-royal-blue/20 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
             </button>
           ))}
         </div>

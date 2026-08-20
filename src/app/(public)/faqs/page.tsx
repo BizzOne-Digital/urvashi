@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { PageHero } from "@/components/ui/PageHero";
 import { Container } from "@/components/ui/Container";
+import { VibrantSection } from "@/components/ui/VibrantSection";
 import { FaqAccordion } from "@/components/faqs/FaqAccordion";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { getPublishedFaqs } from "@/lib/public-data";
@@ -40,7 +41,7 @@ export default async function FaqsPage() {
         image="/demo/calendar.svg"
       />
 
-      <section className="py-16">
+      <VibrantSection variant="mesh">
         <Container className="max-w-3xl">
           {faqs.length === 0 ? (
             <EmptyState title="No FAQs yet" description="Common questions will appear here once published." actionLabel="Contact us" actionHref="/contact" />
@@ -48,7 +49,7 @@ export default async function FaqsPage() {
             <FaqAccordion faqs={faqs} />
           )}
         </Container>
-      </section>
+      </VibrantSection>
     </>
   );
 }

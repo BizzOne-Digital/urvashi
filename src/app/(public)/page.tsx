@@ -7,6 +7,8 @@ import { ProductGrid } from "@/components/shop/ProductGrid";
 import { CinematicIntro } from "@/components/home/CinematicIntro";
 import { HomeHero } from "@/components/home/HomeHero";
 import { ContactForm } from "@/components/forms/ContactForm";
+import { DpmProductImage } from "@/components/ui/DpmProductImage";
+import { VibrantSection } from "@/components/ui/VibrantSection";
 import { getCachedSettings } from "@/lib/settings";
 import { siteDefaults } from "@/lib/brand";
 import {
@@ -57,10 +59,10 @@ export default async function HomePage() {
       <HomeHero tagline={tagline} />
 
       {/* Category rail */}
-      <section className="overflow-hidden border-b border-chrome-light/40 py-12">
+      <VibrantSection variant="mesh" className="border-b border-chrome-light/40 py-12">
         <Container className="min-w-0">
-          <h2 className="heading-section">Shop by category</h2>
-          <div className="-mx-4 mt-8 flex gap-4 overflow-x-auto px-4 pb-2 sm:mx-0 sm:px-0">
+          <h2 className="heading-section gradient-heading">Shop by category</h2>
+          <div className="-mx-4 mt-8 flex gap-4 overflow-x-auto px-4 pb-2 sm:mx-0 sm:px-0" data-reveal-stagger>
             {(categories.length > 0 ? categories : [
               { _id: "drinkware", name: "Drinkware", slug: "drinkware", image: "/demo/mug-white.svg" },
               { _id: "apparel", name: "Apparel", slug: "apparel", image: "/demo/tshirt.svg" },
@@ -70,14 +72,18 @@ export default async function HomePage() {
               <Link
                 key={String(cat._id)}
                 href={`/shop?category=${cat.slug}`}
-                className="group flex min-w-[140px] flex-col items-center gap-3 rounded-sm border border-chrome-light/60 p-4 transition-all hover:border-royal-blue hover:shadow-md"
+                className="group card-vibrant flex min-w-[140px] flex-col items-center gap-3 p-4"
+                data-reveal-item
               >
-                <div className="relative h-20 w-20 overflow-hidden rounded-full bg-chrome-light/20">
-                  <Image
+                <div className="relative h-20 w-20 overflow-hidden rounded-full bg-gradient-to-br from-chrome-light/30 to-pure-paper">
+                  <DpmProductImage
                     src={(cat as { image?: string }).image || DEMO_IMAGES[i % DEMO_IMAGES.length]}
                     alt={cat.name}
                     fill
-                    className="object-contain p-2 transition-transform group-hover:scale-110"
+                    showDpmMark
+                    centeredMark={false}
+                    markSize="sm"
+                    imageClassName="object-contain p-2 transition-transform group-hover:scale-110"
                     sizes="80px"
                   />
                 </div>
@@ -86,10 +92,10 @@ export default async function HomePage() {
             ))}
           </div>
         </Container>
-      </section>
+      </VibrantSection>
 
       {/* Scroll story */}
-      <section className="section-dark overflow-hidden py-20">
+      <VibrantSection variant="dark">
         <Container className="grid min-w-0 items-center gap-12 lg:grid-cols-2">
           <div className="min-w-0">
             <p className="text-sm font-semibold uppercase tracking-widest text-cyan">The process</p>
@@ -121,23 +127,23 @@ export default async function HomePage() {
             ))}
           </div>
         </Container>
-      </section>
+      </VibrantSection>
 
       {/* Featured products */}
-      <section className="overflow-hidden py-20">
+      <VibrantSection variant="light">
         <Container className="min-w-0">
           <div className="flex min-w-0 flex-wrap items-end justify-between gap-4">
-            <h2 className="heading-section">Featured products</h2>
+            <h2 className="heading-section gradient-heading">Featured products</h2>
             <Link href="/shop" className="text-sm font-semibold text-royal-blue hover:underline">View all</Link>
           </div>
           <div className="mt-10">
             <ProductGrid products={featuredProducts.map((p) => ({ ...p, _id: String(p._id) }))} emptyDescription="Featured products will appear here once the catalog is loaded." />
           </div>
         </Container>
-      </section>
+      </VibrantSection>
 
       {/* CMYK section */}
-      <section className="border-y border-chrome-light/40 bg-gradient-to-br from-deep-blue to-ink-black py-16 text-pure-paper">
+      <VibrantSection variant="gradient" className="border-y border-chrome-mid/30">
         <Container className="text-center">
           <h2 className="heading-section">CMYK precision</h2>
           <p className="mx-auto mt-4 max-w-2xl text-chrome-light">
@@ -157,18 +163,19 @@ export default async function HomePage() {
             ))}
           </div>
         </Container>
-      </section>
+      </VibrantSection>
 
       {/* Service cards */}
-      <section className="py-20">
+      <VibrantSection variant="mesh">
         <Container>
           <h2 className="heading-section">What we print</h2>
-          <div className="mt-10 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-10 grid gap-6 md:grid-cols-2 lg:grid-cols-3" data-reveal-stagger>
             {(services.length > 0 ? services.slice(0, 6) : []).map((service) => (
               <Link
                 key={String(service._id)}
                 href={`/services/${service.slug}`}
-                className="group overflow-hidden rounded-sm border border-chrome-light/60 transition-all hover:border-royal-blue hover:shadow-lg"
+                className="group card-vibrant overflow-hidden"
+                data-reveal-item
               >
                 <div className="relative aspect-[16/10] bg-chrome-light/20">
                   {service.cardImage?.url && (
@@ -186,13 +193,21 @@ export default async function HomePage() {
             <Link href="/services" className={buttonVariants("secondary")}>All services</Link>
           </div>
         </Container>
-      </section>
+      </VibrantSection>
 
       {/* Customizer preview */}
-      <section className="section-dark overflow-hidden py-20">
+      <VibrantSection variant="dark">
         <Container className="grid min-w-0 items-center gap-12 lg:grid-cols-2">
-          <div className="relative aspect-square overflow-hidden rounded-sm border border-chrome-mid/30">
-            <Image src="/demo/mug-white.svg" alt="Customizer preview" fill className="object-contain p-8 bg-carbon" sizes="50vw" />
+          <div className="relative aspect-square overflow-hidden rounded-sm border border-chrome-mid/30 bg-carbon">
+            <DpmProductImage
+              src="/demo/mug-white.svg"
+              alt="Customizer preview"
+              fill
+              showDpmMark
+              markSize="lg"
+              imageClassName="object-contain p-8"
+              sizes="50vw"
+            />
           </div>
           <div>
             <h2 className="heading-section">Design it your way</h2>
@@ -200,17 +215,17 @@ export default async function HomePage() {
             <Link href="/customize" className={cn(buttonVariants("primary"), "mt-8 inline-flex")}>Open customizer</Link>
           </div>
         </Container>
-      </section>
+      </VibrantSection>
 
       {/* Pricing highlights */}
-      <section className="py-20">
+      <VibrantSection variant="light">
         <Container>
-          <h2 className="heading-section">Starting prices</h2>
-          <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <h2 className="heading-section gradient-heading">Starting prices</h2>
+          <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4" data-reveal-stagger>
             {(featuredProducts.length > 0 ? featuredProducts.slice(0, 4) : []).map((p) => {
               const { display } = getProductPriceDisplay(p, p.currency);
               return (
-                <div key={String(p._id)} className="rounded-sm border border-chrome-light/60 p-5">
+                <div key={String(p._id)} className="card-vibrant p-5" data-reveal-item>
                   <p className="font-semibold">{p.name}</p>
                   <p className="mt-2 text-2xl font-bold text-royal-blue">{display}</p>
                 </div>
@@ -219,33 +234,35 @@ export default async function HomePage() {
           </div>
           <Link href="/shop" className="mt-8 inline-block text-sm font-semibold text-royal-blue hover:underline">View all products →</Link>
         </Container>
-      </section>
+      </VibrantSection>
 
       {/* Gallery strip */}
-      <section className="overflow-hidden border-t border-chrome-light/40 py-16">
+      <VibrantSection variant="mesh" className="border-t border-chrome-light/40">
         <Container className="min-w-0">
           <div className="flex min-w-0 flex-wrap items-end justify-between gap-4">
-            <h2 className="heading-section">Recent work</h2>
+            <h2 className="heading-section gradient-heading">Recent work</h2>
             <Link href="/gallery" className="text-sm font-semibold text-royal-blue hover:underline">View gallery</Link>
           </div>
-          <div className="mt-8 grid grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-8">
+          <div className="mt-8 grid grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-8" data-reveal-stagger>
             {(galleryStrip.length > 0 ? galleryStrip : DEMO_IMAGES.map((url, i) => ({ _id: String(i), publicUrl: url, alt: `Gallery ${i}` }))).map((item, i) => (
-              <div key={String(item._id || i)} className="relative aspect-square overflow-hidden rounded-sm bg-chrome-light/20">
-                <Image
+              <div key={String(item._id || i)} className="card-vibrant relative aspect-square overflow-hidden bg-chrome-light/20" data-reveal-item>
+                <DpmProductImage
                   src={(item as { publicUrl?: string }).publicUrl || (item as { url?: string }).url || DEMO_IMAGES[i % DEMO_IMAGES.length]}
                   alt={(item as { alt?: string }).alt || "Gallery image"}
                   fill
-                  className="object-contain p-2"
+                  showDpmMark
+                  markSize="sm"
+                  imageClassName="object-contain p-2"
                   sizes="12vw"
                 />
               </div>
             ))}
           </div>
         </Container>
-      </section>
+      </VibrantSection>
 
       {/* Quality section */}
-      <section className="section-dark overflow-hidden py-20">
+      <VibrantSection variant="dark">
         <Container className="grid min-w-0 items-center gap-12 lg:grid-cols-2">
           <div className="min-w-0 pt-8 sm:pt-10 lg:pt-14">
             <h2 className="heading-section">Quality you can feel</h2>
@@ -259,15 +276,15 @@ export default async function HomePage() {
             ))}
           </div>
         </Container>
-      </section>
+      </VibrantSection>
 
       {/* Gifts section */}
-      <section className="overflow-hidden py-20">
+      <VibrantSection variant="mesh">
         <Container className="grid min-w-0 items-center gap-12 lg:grid-cols-2">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-4" data-reveal-stagger>
             {["/demo/ornament.svg", "/demo/keychain.svg", "/demo/magnet.svg", "/demo/calendar.svg"].map((src) => (
-              <div key={src} className="relative aspect-square overflow-hidden rounded-sm border border-chrome-light/60">
-                <Image src={src} alt="Gift product" fill className="object-contain p-4" sizes="25vw" />
+              <div key={src} className="card-vibrant relative aspect-square overflow-hidden" data-reveal-item>
+                <DpmProductImage src={src} alt="Gift product" fill showDpmMark markSize="md" imageClassName="object-contain p-4" sizes="25vw" />
               </div>
             ))}
           </div>
@@ -277,21 +294,22 @@ export default async function HomePage() {
             <Link href="/shop?category=gifts-keepsakes" className={cn(buttonVariants("primary"), "mt-8 inline-flex")}>Shop gifts</Link>
           </div>
         </Container>
-      </section>
+      </VibrantSection>
 
       {/* Testimonials preview */}
       {testimonialPreview.length > 0 && (
-        <section className="border-t border-chrome-light/40 bg-chrome-light/10 py-20">
+        <VibrantSection variant="light" className="border-t border-chrome-light/40 bg-chrome-light/10">
           <Container className="mx-auto max-w-5xl text-center">
             <h2 className="heading-section">Customer stories</h2>
             <p className="mx-auto mt-3 max-w-2xl text-chrome-mid">
               Hear from people who turned their ideas into printed keepsakes, gifts, and everyday products.
             </p>
-            <div className="mt-10 flex flex-wrap justify-center gap-6">
+            <div className="mt-10 flex flex-wrap justify-center gap-6" data-reveal-stagger>
               {testimonialPreview.map((t) => (
                 <blockquote
                   key={String(t._id)}
-                  className="w-full max-w-md rounded-sm border border-chrome-light/60 bg-pure-paper p-6 text-left"
+                  className="card-vibrant w-full max-w-md p-6 text-left"
+                  data-reveal-item
                 >
                   <p className="text-sm leading-relaxed text-carbon">&ldquo;{t.testimonial}&rdquo;</p>
                   <footer className="mt-4 text-sm font-semibold">
@@ -305,17 +323,17 @@ export default async function HomePage() {
               All testimonials →
             </Link>
           </Container>
-        </section>
+        </VibrantSection>
       )}
 
       {/* FAQ preview */}
       {faqPreview.length > 0 && (
-        <section className="py-20">
+        <VibrantSection variant="mesh">
           <Container>
             <h2 className="heading-section">Questions answered</h2>
-            <dl className="mt-10 space-y-6">
+            <dl className="mt-10 space-y-6" data-reveal-stagger>
               {faqPreview.map((faq) => (
-                <div key={String(faq._id)} className="border-b border-chrome-light/60 pb-6">
+                <div key={String(faq._id)} className="card-vibrant border-b-0 p-5" data-reveal-item>
                   <dt className="font-semibold">{faq.question}</dt>
                   <dd className="mt-2 text-sm text-carbon">{faq.answer}</dd>
                 </div>
@@ -323,11 +341,11 @@ export default async function HomePage() {
             </dl>
             <Link href="/faqs" className="mt-8 inline-block text-sm font-semibold text-royal-blue hover:underline">All FAQs →</Link>
           </Container>
-        </section>
+        </VibrantSection>
       )}
 
       {/* Contact / newsletter */}
-      <section className="section-dark overflow-hidden py-20">
+      <VibrantSection variant="dark">
         <Container className="grid min-w-0 items-center gap-12 lg:grid-cols-2">
           <div className="min-w-0 pt-8 sm:pt-10 lg:pt-14">
             <h2 className="heading-section">Ready to start?</h2>
@@ -337,11 +355,11 @@ export default async function HomePage() {
               <p>Phone: {settings.contact?.phone || siteDefaults.phone}</p>
             </div>
           </div>
-          <div className="min-w-0 rounded-sm border border-chrome-mid/40 bg-carbon p-4 sm:p-6">
+          <div className="min-w-0 rounded-sm border border-chrome-mid/40 bg-carbon/80 p-4 shadow-[0_0_40px_rgba(6,94,229,0.15)] backdrop-blur-sm sm:p-6">
             <ContactForm />
           </div>
         </Container>
-      </section>
+      </VibrantSection>
     </>
   );
 }

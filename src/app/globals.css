@@ -65,12 +65,91 @@
 }
 
 @layer components {
+  .cmyk-line {
+    @apply h-[3px] bg-gradient-to-r from-cyan via-magenta to-yellow;
+  }
+
+  .gradient-eyebrow {
+    @apply bg-gradient-to-r from-cyan via-royal-blue to-magenta bg-clip-text text-transparent;
+  }
+
+  .gradient-heading {
+    @apply bg-gradient-to-br from-ink-black via-deep-blue to-ink-black bg-clip-text text-transparent;
+  }
+
+  .page-section {
+    @apply relative py-16 sm:py-20 lg:py-24;
+  }
+
+  .page-section-light {
+    @apply bg-pure-paper text-ink-black;
+  }
+
+  .page-section-dark {
+    @apply bg-ink-black text-pure-paper;
+  }
+
+  .page-section-gradient {
+    @apply bg-gradient-to-br from-deep-blue via-ink-black to-carbon text-pure-paper;
+  }
+
+  .page-section-mesh {
+    @apply bg-pure-paper text-ink-black;
+    background-image:
+      radial-gradient(ellipse 80% 50% at 10% 20%, rgba(13, 151, 252, 0.08), transparent 50%),
+      radial-gradient(ellipse 60% 40% at 90% 10%, rgba(222, 64, 152, 0.07), transparent 45%),
+      radial-gradient(ellipse 50% 30% at 70% 90%, rgba(6, 94, 229, 0.06), transparent 40%);
+  }
+
+  .card-vibrant {
+    @apply relative overflow-hidden rounded-sm border border-chrome-light/50 bg-pure-paper shadow-sm transition-all duration-300;
+  }
+
+  .card-vibrant:hover {
+    @apply -translate-y-1 border-royal-blue/40 shadow-[0_12px_40px_rgba(6,94,229,0.15)];
+  }
+
+  .card-vibrant-dark {
+    @apply relative overflow-hidden rounded-sm border border-chrome-mid/30 bg-carbon/80 backdrop-blur-sm transition-all duration-300;
+  }
+
+  .card-vibrant-dark:hover {
+    @apply -translate-y-1 border-cyan/40 shadow-[0_12px_40px_rgba(13,151,252,0.12)];
+  }
+
+  .dpm-product-mark {
+    text-shadow: 0 1px 2px rgba(254, 254, 254, 0.85);
+  }
+
+  .page-section-dark .dpm-product-mark {
+    text-shadow: 0 1px 8px rgba(6, 94, 229, 0.45);
+    @apply text-cyan;
+  }
+
+  .hero-shimmer {
+    animation: hero-shimmer 8s ease-in-out infinite;
+  }
+
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
+
+  @keyframes hero-shimmer {
+    0%, 100% { opacity: 0.4; transform: translateX(-5%); }
+    50% { opacity: 0.7; transform: translateX(5%); }
+  }
+
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
+  }
+
   .btn-primary {
-    @apply inline-flex max-w-full items-center justify-center gap-2 rounded-sm bg-royal-blue px-4 py-2.5 text-sm font-semibold text-pure-paper transition-all hover:bg-deep-blue focus-visible:ring-2 focus-visible:ring-royal-blue focus-visible:ring-offset-2 sm:px-6 sm:py-3;
+    @apply inline-flex max-w-full items-center justify-center gap-2 rounded-sm bg-gradient-to-b from-[#1a7aff] to-royal-blue px-4 py-2.5 text-sm font-semibold text-pure-paper shadow-[0_0_20px_rgba(6,94,229,0.35)] transition-all hover:brightness-110 hover:shadow-[0_0_28px_rgba(6,94,229,0.5)] focus-visible:ring-2 focus-visible:ring-royal-blue focus-visible:ring-offset-2 sm:px-6 sm:py-3;
   }
 
   .btn-secondary {
-    @apply inline-flex max-w-full items-center justify-center gap-2 rounded-sm border-2 border-ink-black bg-transparent px-4 py-2.5 text-sm font-semibold text-ink-black transition-all hover:bg-ink-black hover:text-pure-paper sm:px-6 sm:py-3;
+    @apply inline-flex max-w-full items-center justify-center gap-2 rounded-sm border-2 border-ink-black bg-transparent px-4 py-2.5 text-sm font-semibold text-ink-black transition-all hover:bg-ink-black hover:text-pure-paper hover:shadow-lg sm:px-6 sm:py-3;
   }
 
   .btn-ghost {
@@ -118,7 +197,7 @@
   }
 
   .card-product {
-    @apply relative overflow-hidden rounded-sm bg-pure-paper border border-chrome-light/50 transition-all hover:shadow-lg hover:border-royal-blue/30;
+    @apply relative overflow-hidden rounded-sm border border-chrome-light/50 bg-pure-paper transition-all duration-300 hover:-translate-y-1 hover:border-royal-blue/40 hover:shadow-[0_16px_48px_rgba(6,94,229,0.18)];
   }
 
   .prose-dpm {

@@ -40,7 +40,7 @@ export function ProductGrid({
   }
 
   return (
-    <div className={cn("grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4", className)}>
+    <div className={cn("grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4", className)} data-reveal-stagger>
       {products.map((product, index) => (
         <ProductCard key={String(product._id)} product={{ ...product, _id: String(product._id) }} priority={index < 4} />
       ))}
