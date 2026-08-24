@@ -1,27 +1,35 @@
 import type { Metadata } from "next";
-import { PageHero } from "@/components/ui/PageHero";
+import { CmsPageHero } from "@/components/cms/CmsPageHero";
 import { Container } from "@/components/ui/Container";
 import { VibrantSection } from "@/components/ui/VibrantSection";
 import { BookingForm } from "@/components/forms/BookingForm";
 import { DpmProductImage } from "@/components/ui/DpmProductImage";
 import { getCachedSettings } from "@/lib/settings";
-import { DEMO_IMAGES } from "@/lib/public-data";
+import { DEMO_IMAGES, getPublishedPageBySlug } from "@/lib/public-data";
+import { getPageSection, pageMetadata } from "@/lib/page-content";
 
-export const metadata: Metadata = {
-  title: "Book a Consultation",
-  description: "Request a consultation with DPM Custom Prints for custom orders, design review, or large projects.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const page = await getPublishedPageBySlug("booking");
+  return pageMetadata(page, {
+    title: "Book a Consultation",
+    description: "Request a consultation with DPM Custom Prints for custom orders, design review, or large projects.",
+  });
+}
 
 export default async function BookingPage() {
-  const settings = await getCachedSettings();
+  const [settings, page] = await Promise.all([getCachedSettings(), getPublishedPageBySlug("booking")]);
+  const hero = getPageSection(page, "hero");
 
   return (
     <>
-      <PageHero
-        eyebrow="Consultation"
-        title="Book a consultation"
-        subtitle="Share your project details and preferred times. This is a request — not a confirmed appointment."
-        image="/demo/ink-lab.svg"
+      <CmsPageHero
+        section={hero}
+        fallback={{
+          eyebrow: "Consultation",
+          title: "Book a consultation",
+          subtitle: "Share your project details and preferred times. This is a request — not a confirmed appointment.",
+          image: "/demo/ink-lab.svg",
+        }}
       />
 
       <VibrantSection variant="mesh">

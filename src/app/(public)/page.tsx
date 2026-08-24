@@ -14,12 +14,14 @@ import { siteDefaults } from "@/lib/brand";
 import {
   DEMO_IMAGES,
   getFeaturedProducts,
+  getPublishedPageBySlug,
   getPublishedServices,
   getPublishedTestimonials,
   getPublishedFaqs,
   getGalleryItems,
   getProductCategories,
 } from "@/lib/public-data";
+import { cmsHeading } from "@/lib/page-content";
 import { getProductPriceDisplay } from "@/lib/pricing";
 import { cn } from "@/lib/utils";
 
@@ -32,7 +34,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function HomePage() {
-  const [settings, featuredProducts, services, testimonials, faqs, galleryItems, categories] =
+  const [settings, featuredProducts, services, testimonials, faqs, galleryItems, categories, cmsPage] =
     await Promise.all([
       getCachedSettings(),
       getFeaturedProducts(8),
@@ -41,6 +43,7 @@ export default async function HomePage() {
       getPublishedFaqs(),
       getGalleryItems(),
       getProductCategories(),
+      getPublishedPageBySlug("home"),
     ]);
 
   const introEnabled = settings.motion?.introEnabled !== false;
@@ -51,6 +54,7 @@ export default async function HomePage() {
   const galleryStrip = galleryItems.slice(0, 8);
   const faqPreview = faqs.slice(0, 4);
   const testimonialPreview = testimonials.slice(0, 3);
+  const serviceOptions = services.length > 0 ? services.map((s) => s.title) : ["Custom printing"];
 
   return (
     <>
@@ -61,7 +65,7 @@ export default async function HomePage() {
       {/* Category rail */}
       <VibrantSection variant="mesh" className="border-b border-chrome-light/40 py-12">
         <Container className="min-w-0">
-          <h2 className="heading-section gradient-heading">Shop by category</h2>
+          <h2 className="heading-section gradient-heading">{cmsHeading(cmsPage, "category-rail", "Shop by category")}</h2>
           <div className="-mx-4 mt-8 flex gap-4 overflow-x-auto px-4 pb-2 sm:mx-0 sm:px-0" data-reveal-stagger>
             {(categories.length > 0 ? categories : [
               { _id: "drinkware", name: "Drinkware", slug: "drinkware", image: "/demo/mug-white.svg" },
@@ -99,7 +103,7 @@ export default async function HomePage() {
         <Container className="grid min-w-0 items-center gap-12 lg:grid-cols-2">
           <div className="min-w-0">
             <p className="text-sm font-semibold uppercase tracking-widest text-cyan">The process</p>
-            <h2 className="heading-section mt-3">From idea to object</h2>
+            <h2 className="heading-section mt-3">{cmsHeading(cmsPage, "process", "From idea to object")}</h2>
             <p className="mt-4 text-chrome-light">
               Share your artwork or text, review your preview, and we handle production with care. Every print passes through our ink lab workflow.
             </p>
@@ -133,7 +137,7 @@ export default async function HomePage() {
       <VibrantSection variant="light">
         <Container className="min-w-0">
           <div className="flex min-w-0 flex-wrap items-end justify-between gap-4">
-            <h2 className="heading-section gradient-heading">Featured products</h2>
+            <h2 className="heading-section gradient-heading">{cmsHeading(cmsPage, "featured-products", "Featured products")}</h2>
             <Link href="/shop" className="text-sm font-semibold text-royal-blue hover:underline">View all</Link>
           </div>
           <div className="mt-10">
@@ -168,7 +172,7 @@ export default async function HomePage() {
       {/* Service cards */}
       <VibrantSection variant="mesh">
         <Container>
-          <h2 className="heading-section">What we print</h2>
+          <h2 className="heading-section">{cmsHeading(cmsPage, "services", "What we print")}</h2>
           <div className="mt-10 grid gap-6 md:grid-cols-2 lg:grid-cols-3" data-reveal-stagger>
             {(services.length > 0 ? services.slice(0, 6) : []).map((service) => (
               <Link
@@ -348,7 +352,7 @@ export default async function HomePage() {
       <VibrantSection variant="dark">
         <Container className="grid min-w-0 items-center gap-12 lg:grid-cols-2">
           <div className="min-w-0 pt-8 sm:pt-10 lg:pt-14">
-            <h2 className="heading-section">Ready to start?</h2>
+            <h2 className="heading-section">{cmsHeading(cmsPage, "contact-cta", "Ready to start?")}</h2>
             <p className="mt-4 break-words text-chrome-light">Tell us about your project. We typically respond within one business day.</p>
             <div className="mt-8 space-y-2 break-words text-sm text-chrome-light">
               <p className="break-all">Email: {settings.contact?.email || siteDefaults.email}</p>
@@ -356,7 +360,7 @@ export default async function HomePage() {
             </div>
           </div>
           <div className="min-w-0 rounded-sm border border-chrome-mid/40 bg-carbon/80 p-4 shadow-[0_0_40px_rgba(6,94,229,0.15)] backdrop-blur-sm sm:p-6">
-            <ContactForm />
+            <ContactForm serviceOptions={serviceOptions} />
           </div>
         </Container>
       </VibrantSection>

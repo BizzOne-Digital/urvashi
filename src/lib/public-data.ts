@@ -250,3 +250,19 @@ export async function getPageBySlug(slug: string) {
     return page ? toPlain(page) : null;
   }, null);
 }
+
+function cachedPublishedPage(slug: string) {
+  return unstable_cache(
+    async () =>
+      safeQuery(async () => {
+        const page = await Page.findOne({ slug, status: "published" }).lean();
+        return page ? toPlain(page) : null;
+      }, null),
+    ["published-page", slug],
+    { tags: [CACHE_TAGS.pages], revalidate: 60 }
+  );
+}
+
+export async function getPublishedPageBySlug(slug: string) {
+  return cachedPublishedPage(slug)();
+}

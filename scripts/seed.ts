@@ -380,60 +380,27 @@ async function seedProducts(categoryMap: Map<string, mongoose.Types.ObjectId>): 
 async function seedServices(): Promise<number> {
   const services = [
     {
-      title: "Custom Drinkware Printing",
-      slug: "custom-drinkware-printing",
-      shortDescription: "Personalized mugs, tumblers, and drinkware for gifts, teams, and events.",
-      order: 1,
-      overview: "Turn everyday drinkware into branded or personal keepsakes with custom artwork and text.",
-      suitableUses: ["Corporate gifts", "Family gifts", "Events", "Team merchandise"],
-      productOptions: ["Custom White Mug 11oz", "Tumbler"],
-    },
-    {
-      title: "Custom T-Shirt & Apparel Printing",
-      slug: "custom-t-shirt-apparel-printing",
-      shortDescription: "Front-only and front-and-back apparel printing for personal and business use.",
-      order: 2,
-      overview: "Create wearable custom prints with clear front-only or front-and-back options.",
-      suitableUses: ["Events", "Teams", "Personal gifts", "Promotional apparel"],
-      productOptions: ["T-Shirt Front Only", "T-Shirt Front and Back", "Cap", "Hoodie"],
-    },
-    {
-      title: "Personalized Gifts & Keepsakes",
-      slug: "personalized-gifts-keepsakes",
-      shortDescription: "Meaningful keepsakes and gift items customized for any occasion.",
-      order: 3,
-      overview: "From ornaments to home accents, personalize gifts that feel thoughtful and unique.",
-      suitableUses: ["Birthdays", "Anniversaries", "Family gifts", "Special occasions"],
-      productOptions: ["Round Ornament", "Magnet", "Key Chain", "Couch Pillow Case"],
-    },
-    {
-      title: "Promotional Pens, Magnets & Key Chains",
-      slug: "promotional-pens-magnets-key-chains",
-      shortDescription: "Small-format promotional products for businesses, events, and giveaways.",
-      order: 4,
-      overview: "Brand your business with practical promotional items in useful quantities.",
-      suitableUses: ["Trade shows", "Client gifts", "Team handouts", "Local promotions"],
-      productOptions: ["Custom Pen", "Magnet", "Key Chain"],
-      minimumOrderNote: "Custom pens require a minimum order of 5.",
-    },
-    {
-      title: "Seasonal Printing & Calendars",
-      slug: "seasonal-printing-calendars",
-      shortDescription: "Seasonal keepsakes and custom calendars for personal and business use.",
-      order: 5,
-      overview: "Celebrate seasons and milestones with ornaments, calendars, and themed print items.",
-      suitableUses: ["Holiday gifting", "Family calendars", "Business promotions", "Seasonal campaigns"],
-      productOptions: ["Calendar", "Round Ornament"],
-    },
-    {
-      title: "Artwork Setup & Custom Order Support",
-      slug: "artwork-setup-custom-order-support",
-      shortDescription: "Help preparing artwork and reviewing custom orders before production.",
-      order: 6,
-      overview: "Need help with file setup or a product without listed pricing? We can review your artwork and provide a quote.",
-      suitableUses: ["Custom quotes", "Artwork review", "Large orders", "Special requests"],
-      productOptions: ["Blanket Cover", "Couch Pillow Case", "Cap", "Hoodie"],
-      pricingNote: "Products without confirmed pricing require contact for a quote.",
+      title: "Custom printing",
+      slug: "custom-printing",
+      shortDescription:
+        "Your idea. Your style. Printed with purpose — on drinkware, apparel, gifts, promotional items, and more.",
+      order: 0,
+      overview:
+        "Custom printing is our core service at DPM Custom Prints. Whether you need one personalized mug or a bulk run of branded pens, we help you turn artwork and text into high-quality printed products.",
+      suitableUses: [
+        "Personal gifts & keepsakes",
+        "Business branding & promotions",
+        "Events & team merchandise",
+        "Seasonal & holiday printing",
+        "Custom quote projects",
+      ],
+      productOptions: [
+        "Drinkware (mugs, tumblers)",
+        "Apparel (t-shirts, caps, hoodies)",
+        "Gifts & keepsakes",
+        "Pens, magnets & key chains",
+        "Calendars & seasonal items",
+      ],
     },
   ];
 
@@ -479,19 +446,20 @@ async function seedServices(): Promise<number> {
             image: { url: "/demo/mug-white.svg", alt: "Print and deliver" },
           },
         ],
-        pricingNote: service.pricingNote,
-        minimumOrderNote: service.minimumOrderNote,
+        pricingNote: "pricingNote" in service ? service.pricingNote : undefined,
+        minimumOrderNote: "minimumOrderNote" in service ? service.minimumOrderNote : undefined,
         importantNotes:
           "Final placement, colour, and sizing may vary from on-screen previews. Contact us before launch to confirm currency and fulfillment details.",
         sectionImages: demoImages("/demo/ink-lab.svg", service.title),
-        faqs: service.minimumOrderNote
-          ? [
-              {
-                question: "What is the minimum order for custom pens?",
-                answer: "Custom pens require a minimum order of 5 pens at $3.99 each.",
-              },
-            ]
-          : [],
+        faqs:
+          "minimumOrderNote" in service && service.minimumOrderNote
+            ? [
+                {
+                  question: "What is the minimum order for custom pens?",
+                  answer: "Custom pens require a minimum order of 5 pens at $3.99 each.",
+                },
+              ]
+            : [],
         ctaText: "Contact us",
         ctaUrl: "/contact",
       },

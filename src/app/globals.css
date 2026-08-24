@@ -30,6 +30,24 @@
     min-width: 0;
   }
 
+  html.intro-pending {
+    overflow: hidden;
+  }
+
+  html.intro-pending::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 199;
+    background: var(--color-ink-black);
+  }
+
+  html.intro-pending header,
+  html.intro-pending #main-content,
+  html.intro-pending footer {
+    visibility: hidden;
+  }
+
   #main-content {
     min-width: 0;
     max-width: 100%;

@@ -1,18 +1,23 @@
 import type { Metadata } from "next";
-import { PageHero } from "@/components/ui/PageHero";
+import { CmsPageHero } from "@/components/cms/CmsPageHero";
 import { Container } from "@/components/ui/Container";
 import { VibrantSection } from "@/components/ui/VibrantSection";
 import { FaqAccordion } from "@/components/faqs/FaqAccordion";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { getPublishedFaqs } from "@/lib/public-data";
+import { getPublishedFaqs, getPublishedPageBySlug } from "@/lib/public-data";
+import { getPageSection, pageMetadata } from "@/lib/page-content";
 
-export const metadata: Metadata = {
-  title: "FAQs",
-  description: "Frequently asked questions about ordering, pricing, artwork, and custom printing at DPM.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const page = await getPublishedPageBySlug("faqs");
+  return pageMetadata(page, {
+    title: "FAQs",
+    description: "Frequently asked questions about ordering, pricing, artwork, and custom printing at DPM.",
+  });
+}
 
 export default async function FaqsPage() {
-  const faqs = await getPublishedFaqs();
+  const [faqs, page] = await Promise.all([getPublishedFaqs(), getPublishedPageBySlug("faqs")]);
+  const hero = getPageSection(page, "hero");
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -34,11 +39,14 @@ export default async function FaqsPage() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
 
-      <PageHero
-        eyebrow="Help centre"
-        title="Frequently asked questions"
-        subtitle="Ordering, pricing, artwork, minimum quantities, and more."
-        image="/demo/calendar.svg"
+      <CmsPageHero
+        section={hero}
+        fallback={{
+          eyebrow: "Help centre",
+          title: "Frequently asked questions",
+          subtitle: "Ordering, pricing, artwork, minimum quantities, and more.",
+          image: "/demo/calendar.svg",
+        }}
       />
 
       <VibrantSection variant="mesh">

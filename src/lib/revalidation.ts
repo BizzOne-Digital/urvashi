@@ -23,6 +23,7 @@ export function revalidateProducts() {
   revalidateTag(CACHE_TAGS.products);
   revalidateTag(CACHE_TAGS.pricing);
   revalidatePath("/shop");
+  revalidatePath("/pricing");
   revalidatePath("/");
 }
 
@@ -78,6 +79,7 @@ export function revalidatePage(slug: string) {
     services: "/services",
     shop: "/shop",
     customize: "/customize",
+    pricing: "/pricing",
     gallery: "/gallery",
     testimonials: "/testimonials",
     faqs: "/faqs",

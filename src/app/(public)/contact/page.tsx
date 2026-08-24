@@ -1,27 +1,41 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { PageHero } from "@/components/ui/PageHero";
+import { CmsPageHero } from "@/components/cms/CmsPageHero";
 import { Container } from "@/components/ui/Container";
 import { VibrantSection } from "@/components/ui/VibrantSection";
 import { ContactForm } from "@/components/forms/ContactForm";
 import { getCachedSettings } from "@/lib/settings";
+import { getPublishedPageBySlug, getPublishedServices } from "@/lib/public-data";
+import { getPageSection, pageMetadata } from "@/lib/page-content";
 import { siteDefaults } from "@/lib/brand";
 
-export const metadata: Metadata = {
-  title: "Contact",
-  description: "Contact DPM Custom Prints for custom orders, quotes, artwork help, and general inquiries.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const page = await getPublishedPageBySlug("contact");
+  return pageMetadata(page, {
+    title: "Contact",
+    description: "Contact DPM Custom Prints for custom orders, quotes, artwork help, and general inquiries.",
+  });
+}
 
 export default async function ContactPage() {
-  const settings = await getCachedSettings();
+  const [settings, services, page] = await Promise.all([
+    getCachedSettings(),
+    getPublishedServices(),
+    getPublishedPageBySlug("contact"),
+  ]);
+  const serviceOptions = services.length > 0 ? services.map((s) => s.title) : ["Custom printing"];
+  const hero = getPageSection(page, "hero");
 
   return (
     <>
-      <PageHero
-        eyebrow="Get in touch"
-        title="Contact us"
-        subtitle="Questions about a product, custom order, or artwork? We're here to help."
-        image="/demo/ink-lab.svg"
+      <CmsPageHero
+        section={hero}
+        fallback={{
+          eyebrow: "Get in touch",
+          title: "Contact us",
+          subtitle: "Questions about a product, custom order, or artwork? We're here to help.",
+          image: "/demo/ink-lab.svg",
+        }}
       />
 
       <VibrantSection variant="mesh">
@@ -56,7 +70,7 @@ export default async function ContactPage() {
               </p>
             </div>
             <div className="card-vibrant min-w-0 p-4 sm:p-6" data-reveal data-reveal-delay="0.15">
-              <ContactForm />
+              <ContactForm serviceOptions={serviceOptions} />
             </div>
           </div>
         </Container>

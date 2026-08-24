@@ -37,9 +37,10 @@ const INQUIRY_TYPES = [
 
 interface ContactFormProps {
   className?: string;
+  serviceOptions?: string[];
 }
 
-export function ContactForm({ className }: ContactFormProps) {
+export function ContactForm({ className, serviceOptions = ["Custom printing"] }: ContactFormProps) {
   const [submitting, setSubmitting] = useState(false);
   const {
     register,
@@ -121,7 +122,12 @@ export function ContactForm({ className }: ContactFormProps) {
         </div>
         <div>
           <label htmlFor="serviceInterest" className="mb-1 block text-sm font-medium">Service interest (optional)</label>
-          <input id="serviceInterest" {...register("serviceInterest")} className={fieldClass} />
+          <select id="serviceInterest" {...register("serviceInterest")} className={fieldClass}>
+            <option value="">Select a service</option>
+            {serviceOptions.map((service) => (
+              <option key={service} value={service}>{service}</option>
+            ))}
+          </select>
         </div>
       </div>
 

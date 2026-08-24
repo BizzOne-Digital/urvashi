@@ -1,19 +1,23 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
-import { PageHero } from "@/components/ui/PageHero";
+import { CmsPageHero } from "@/components/cms/CmsPageHero";
 import { Container } from "@/components/ui/Container";
 import { VibrantSection } from "@/components/ui/VibrantSection";
 import { ProductGrid } from "@/components/shop/ProductGrid";
 import { ShopFilters } from "@/components/shop/ShopFilters";
-import { getShopProducts, getProductCategories } from "@/lib/public-data";
+import { getPublishedPageBySlug, getShopProducts, getProductCategories } from "@/lib/public-data";
+import { getPageSection, pageMetadata } from "@/lib/page-content";
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/Button";
 
-export const metadata: Metadata = {
-  title: "Shop",
-  description: "Browse custom printed mugs, tumblers, apparel, gifts, and promotional products.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const page = await getPublishedPageBySlug("shop");
+  return pageMetadata(page, {
+    title: "Shop",
+    description: "Browse custom printed mugs, tumblers, apparel, gifts, and promotional products.",
+  });
+}
 
 interface Props {
   searchParams: Promise<{
@@ -26,26 +30,31 @@ interface Props {
 
 export default async function ShopPage({ searchParams }: Props) {
   const params = await searchParams;
-  const page = Math.max(1, parseInt(params.page || "1", 10) || 1);
-  const [result, categories] = await Promise.all([
+  const pageNum = Math.max(1, parseInt(params.page || "1", 10) || 1);
+  const [result, categories, cmsPage] = await Promise.all([
     getShopProducts({
       search: params.search,
       category: params.category,
-      page,
+      page: pageNum,
       sort: params.sort,
     }),
     getProductCategories(),
+    getPublishedPageBySlug("shop"),
   ]);
 
+  const hero = getPageSection(cmsPage, "hero");
   const { products, totalPages, total } = result;
 
   return (
     <>
-      <PageHero
-        eyebrow="Catalog"
-        title="Shop custom prints"
-        subtitle="Mugs, tumblers, apparel, gifts, and promotional products — ready to personalize."
-        image="/demo/mug-white.svg"
+      <CmsPageHero
+        section={hero}
+        fallback={{
+          eyebrow: "Catalog",
+          title: "Shop custom prints",
+          subtitle: "Mugs, tumblers, apparel, gifts, and promotional products — ready to personalize.",
+          image: "/demo/mug-white.svg",
+        }}
       />
 
       <VibrantSection variant="mesh" reveal={false}>
@@ -69,18 +78,18 @@ export default async function ShopPage({ searchParams }: Props) {
 
           {totalPages > 1 && (
             <nav className="mt-12 flex items-center justify-center gap-2" aria-label="Pagination">
-              {page > 1 && (
+              {pageNum > 1 && (
                 <Link
-                  href={`/shop?${new URLSearchParams({ ...params, page: String(page - 1) } as Record<string, string>).toString()}`}
+                  href={`/shop?${new URLSearchParams({ ...params, page: String(pageNum - 1) } as Record<string, string>).toString()}`}
                   className={cn(buttonVariants("secondary"), "px-4 py-2")}
                 >
                   Previous
                 </Link>
               )}
-              <span className="px-4 text-sm text-carbon">Page {page} of {totalPages}</span>
-              {page < totalPages && (
+              <span className="px-4 text-sm text-carbon">Page {pageNum} of {totalPages}</span>
+              {pageNum < totalPages && (
                 <Link
-                  href={`/shop?${new URLSearchParams({ ...params, page: String(page + 1) } as Record<string, string>).toString()}`}
+                  href={`/shop?${new URLSearchParams({ ...params, page: String(pageNum + 1) } as Record<string, string>).toString()}`}
                   className={cn(buttonVariants("secondary"), "px-4 py-2")}
                 >
                   Next

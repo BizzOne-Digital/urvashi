@@ -106,6 +106,16 @@ export function ServiceForm({ serviceId, initialData }: ServiceFormProps) {
     toast.success("Image uploaded");
   };
 
+  const handleDelete = async () => {
+    if (!serviceId || isNew) return;
+    if (!confirm("Delete this service? Its public page will be removed.")) return;
+    await adminFetch(`/api/admin/services/${serviceId}`, {
+      method: "DELETE",
+      successMessage: "Service deleted",
+    });
+    router.push("/admin/services");
+  };
+
   const onSubmit = async (data: ServiceFormData) => {
     if (!data.title) {
       toast.error("Title is required");
@@ -285,10 +295,17 @@ export function ServiceForm({ serviceId, initialData }: ServiceFormProps) {
         </div>
       )}
 
-      <div className="flex justify-end gap-3">
-        <Button type="button" variant="secondary" onClick={() => router.push("/admin/services")}>
-          Cancel
-        </Button>
+      <div className="flex justify-between gap-3">
+        <div className="flex gap-3">
+          <Button type="button" variant="secondary" onClick={() => router.push("/admin/services")}>
+            Cancel
+          </Button>
+          {!isNew && (
+            <Button type="button" variant="ghost" onClick={handleDelete} className="text-deep-magenta">
+              Delete service
+            </Button>
+          )}
+        </div>
         <Button type="submit" disabled={isSubmitting}>
           {isSubmitting ? "Saving…" : isNew ? "Create Service" : "Save Changes"}
         </Button>

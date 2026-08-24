@@ -17,6 +17,8 @@ function buildHeaderSettings(settings: Awaited<ReturnType<typeof getCachedSettin
 function buildFooterSettings(settings: Awaited<ReturnType<typeof getCachedSettings>>): FooterSettings {
   return {
     businessName: settings.general?.businessName || siteDefaults.businessName,
+    logoPath: settings.general?.logoPath || siteDefaults.logoPath,
+    shortName: settings.general?.shortName || siteDefaults.shortName,
     email: settings.contact?.email || siteDefaults.email,
     phone: settings.contact?.phone || siteDefaults.phone,
     phoneLink: settings.contact?.phoneLink || siteDefaults.phoneLink,

@@ -29,9 +29,21 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const settings = await getCachedSettings();
+  const introEnabled = settings.motion?.introEnabled !== false;
+
   return (
     <html lang="en" className={inter.variable}>
+      <head>
+        {introEnabled ? (
+          <script
+            dangerouslySetInnerHTML={{
+              __html: `(function(){try{var p=location.pathname;if(p==="/"||p===""){if(sessionStorage.getItem("dpm_intro_seen")!=="1"){document.documentElement.classList.add("intro-pending");}}}catch(e){}})();`,
+            }}
+          />
+        ) : null}
+      </head>
       <body className="flex min-h-screen min-w-0 flex-col overflow-x-clip">
         <Providers>{children}</Providers>
       </body>

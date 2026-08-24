@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin, unauthorizedResponse } from "@/lib/auth-helpers";
 import { connectDB } from "@/lib/db";
 import PricingRule from "@/models/PricingRule";
+import Product from "@/models/Product";
 import { serializeDocs, serialize } from "@/lib/serialize";
 import { revalidateProducts } from "@/lib/revalidation";
 
@@ -44,6 +45,19 @@ export async function POST(request: NextRequest) {
       effectiveTo: body.effectiveTo,
       isActive: body.isActive ?? true,
     });
+
+    if (body.productId) {
+      const productUpdate: Record<string, unknown> = {};
+      if (body.basePrice !== undefined) productUpdate.price = body.basePrice;
+      if (body.pricingMode !== undefined) {
+        productUpdate.pricingMode = body.pricingMode;
+        productUpdate.availability = body.pricingMode === "quote" ? "quote_only" : "in_stock";
+      }
+      if (body.minQuantity !== undefined) productUpdate.minQuantity = body.minQuantity;
+      if (Object.keys(productUpdate).length > 0) {
+        await Product.findByIdAndUpdate(body.productId, { $set: productUpdate });
+      }
+    }
 
     revalidateProducts();
     return NextResponse.json(serialize(rule.toObject()), { status: 201 });
