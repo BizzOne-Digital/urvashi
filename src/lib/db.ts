@@ -16,8 +16,22 @@ if (!global.mongooseCache) {
   global.mongooseCache = cached;
 }
 
+function isProductionRuntime(): boolean {
+  return process.env.NODE_ENV === "production" || Boolean(process.env.VERCEL);
+}
+
 function getMongoUri(): string {
-  return process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/dpm_custom_prints";
+  const uri = process.env.MONGODB_URI?.trim();
+
+  if (uri) return uri;
+
+  if (isProductionRuntime()) {
+    throw new Error(
+      "MONGODB_URI is not set. Add it to your hosting provider environment variables (e.g. Vercel → Settings → Environment Variables)."
+    );
+  }
+
+  return "mongodb://127.0.0.1:27017/dpm_custom_prints";
 }
 
 export async function connectDB(): Promise<typeof mongoose> {
@@ -36,6 +50,8 @@ export async function connectDB(): Promise<typeof mongoose> {
     cached.uri = uri;
     cached.promise = mongoose.connect(uri, {
       bufferCommands: false,
+      serverSelectionTimeoutMS: 10000,
+      maxPoolSize: 10,
     });
   }
 
@@ -43,6 +59,7 @@ export async function connectDB(): Promise<typeof mongoose> {
     cached.conn = await cached.promise;
   } catch (e) {
     cached.promise = null;
+    cached.uri = null;
     throw e;
   }
 

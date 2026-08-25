@@ -33,43 +33,40 @@ async function safeQuery<T>(fn: () => Promise<T>, fallback: T): Promise<T> {
     await connectDB();
     return await fn();
   } catch (error) {
-    if (process.env.NODE_ENV === "development") {
-      console.error("[public-data] Database query failed:", error);
-    }
+    console.error("[public-data] Database query failed:", error);
     return fallback;
   }
+}
+
+async function withDb<T>(fn: () => Promise<T>): Promise<T> {
+  await connectDB();
+  return fn();
 }
 
 export type PlainProduct = ReturnType<typeof toPlain<IProduct>>;
 export type PlainService = ReturnType<typeof toPlain<IService>>;
 
-export const getFeaturedProducts = unstable_cache(
-  async (limit = 8) =>
-    safeQuery(async () => {
-      let products = await Product.find({ status: "published", featured: true })
-        .sort({ name: 1 })
-        .limit(limit)
-        .lean();
+export async function getFeaturedProducts(limit = 8) {
+  return withDb(async () => {
+    let products = await Product.find({ status: "published", featured: true })
+      .sort({ name: 1 })
+      .limit(limit)
+      .lean();
 
-      if (products.length === 0) {
-        products = await Product.find({ status: "published" }).sort({ name: 1 }).limit(limit).lean();
-      }
+    if (products.length === 0) {
+      products = await Product.find({ status: "published" }).sort({ name: 1 }).limit(limit).lean();
+    }
 
-      return toPlain(products);
-    }, []),
-  ["featured-products-v3"],
-  { tags: [CACHE_TAGS.products], revalidate: 60 }
-);
+    return toPlain(products);
+  });
+}
 
-export const getPublishedProducts = unstable_cache(
-  async () =>
-    safeQuery(async () => {
-      const products = await Product.find({ status: "published" }).sort({ name: 1 }).lean();
-      return toPlain(products);
-    }, []),
-  ["published-products-v2"],
-  { tags: [CACHE_TAGS.products], revalidate: 60 }
-);
+export async function getPublishedProducts() {
+  return withDb(async () => {
+    const products = await Product.find({ status: "published" }).sort({ name: 1 }).lean();
+    return toPlain(products);
+  });
+}
 
 export async function getShopProducts(params: {
   search?: string;
@@ -80,7 +77,7 @@ export async function getShopProducts(params: {
 }) {
   const { search, category, page = 1, perPage = 12, sort = "name" } = params;
 
-  return safeQuery(async () => {
+  return withDb(async () => {
     const filter: Record<string, unknown> = { status: "published" };
     if (category) filter.categorySlug = category;
     if (search?.trim()) {
@@ -107,14 +104,14 @@ export async function getShopProducts(params: {
       .lean();
 
     return { products: toPlain(products), total, page, perPage, totalPages: Math.ceil(total / perPage) };
-  }, { products: [], total: 0, page, perPage, totalPages: 0 });
+  });
 }
 
 export async function getProductBySlug(slug: string) {
-  return safeQuery(async () => {
+  return withDb(async () => {
     const product = await Product.findOne({ slug, status: "published" }).lean();
     return product ? toPlain(product) : null;
-  }, null);
+  });
 }
 
 export const getProductCategories = unstable_cache(

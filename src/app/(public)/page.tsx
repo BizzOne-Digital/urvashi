@@ -21,6 +21,8 @@ import { cmsHeading } from "@/lib/page-content";
 import { PRICING_CATALOG } from "@/lib/product-pricing";
 import { cn, formatCurrency } from "@/lib/utils";
 
+export const dynamic = "force-dynamic";
+
 export async function generateMetadata(): Promise<Metadata> {
   const settings = await getCachedSettings();
   return {
