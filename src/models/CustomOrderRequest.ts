@@ -13,6 +13,8 @@ export interface ICustomOrderRequest extends Document {
   quantity?: number;
   deadline?: Date;
   instructions?: string;
+  designHelp?: boolean;
+  estimatedTotal?: number;
   artworkAssetIds: string[];
   source: "cart" | "customizer" | "contact" | "booking" | "manual";
   status: "new" | "reviewing" | "needs-info" | "quoted" | "accepted" | "converted-to-order" | "declined" | "closed" | "spam";
@@ -40,6 +42,8 @@ const CustomOrderRequestSchema = new Schema<ICustomOrderRequest>(
     quantity: Number,
     deadline: Date,
     instructions: String,
+    designHelp: { type: Boolean, default: false },
+    estimatedTotal: Number,
     artworkAssetIds: [String],
     source: {
       type: String,

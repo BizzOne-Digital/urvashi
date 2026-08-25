@@ -7,23 +7,19 @@ import { ProductGrid } from "@/components/shop/ProductGrid";
 import { CinematicIntro } from "@/components/home/CinematicIntro";
 import { HomeHero } from "@/components/home/HomeHero";
 import { ContactForm } from "@/components/forms/ContactForm";
-import { DpmProductImage } from "@/components/ui/DpmProductImage";
 import { VibrantSection } from "@/components/ui/VibrantSection";
 import { getCachedSettings } from "@/lib/settings";
 import { siteDefaults } from "@/lib/brand";
 import {
-  DEMO_IMAGES,
   getFeaturedProducts,
   getPublishedPageBySlug,
   getPublishedServices,
   getPublishedTestimonials,
   getPublishedFaqs,
-  getGalleryItems,
-  getProductCategories,
 } from "@/lib/public-data";
 import { cmsHeading } from "@/lib/page-content";
-import { getProductPriceDisplay } from "@/lib/pricing";
-import { cn } from "@/lib/utils";
+import { PRICING_CATALOG } from "@/lib/product-pricing";
+import { cn, formatCurrency } from "@/lib/utils";
 
 export async function generateMetadata(): Promise<Metadata> {
   const settings = await getCachedSettings();
@@ -34,15 +30,13 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function HomePage() {
-  const [settings, featuredProducts, services, testimonials, faqs, galleryItems, categories, cmsPage] =
+  const [settings, featuredProducts, services, testimonials, faqs, cmsPage] =
     await Promise.all([
       getCachedSettings(),
       getFeaturedProducts(8),
       getPublishedServices(),
       getPublishedTestimonials(true),
       getPublishedFaqs(),
-      getGalleryItems(),
-      getProductCategories(),
       getPublishedPageBySlug("home"),
     ]);
 
@@ -51,52 +45,33 @@ export default async function HomePage() {
   const shortName = settings.general?.shortName || siteDefaults.shortName;
   const tagline = settings.general?.tagline || siteDefaults.tagline;
 
-  const galleryStrip = galleryItems.slice(0, 8);
   const faqPreview = faqs.slice(0, 4);
   const testimonialPreview = testimonials.slice(0, 3);
   const serviceOptions = services.length > 0 ? services.map((s) => s.title) : ["Custom printing"];
+
+  const showcaseProducts = featuredProducts.filter(
+    (p) => p.cardImage?.url || p.blankImage?.url || p.customizedImage?.url
+  );
+
+  const processImages = [
+    { src: "/home/process/keychains.png", alt: "Blank keychains for every style" },
+    { src: "/home/process/glass-tumbler.png", alt: "Customize your glass tumbler" },
+    { src: "/home/process/pens.png", alt: "Sublimation pens" },
+    { src: "/home/process/tumbler.png", alt: "Add your ideas to a blank tumbler" },
+  ];
+
+  const qualitySamples = [
+    { src: "/products/tumblers/customized.png", alt: "Customized sublimation tumbler" },
+    { src: "/products/glass-tumblers/customized.png", alt: "Customized glass tumbler" },
+    { src: "/products/sublimation-pens/customized.png", alt: "Customized sublimation pen" },
+    { src: "/products/sublimation-keychains/customized.png", alt: "Customized sublimation keychain" },
+  ];
 
   return (
     <>
       <CinematicIntro logoPath={logoPath} shortName={shortName} enabled={introEnabled} />
 
       <HomeHero tagline={tagline} />
-
-      {/* Category rail */}
-      <VibrantSection variant="mesh" className="border-b border-chrome-light/40 py-12">
-        <Container className="min-w-0">
-          <h2 className="heading-section gradient-heading">{cmsHeading(cmsPage, "category-rail", "Shop by category")}</h2>
-          <div className="-mx-4 mt-8 flex gap-4 overflow-x-auto px-4 pb-2 sm:mx-0 sm:px-0" data-reveal-stagger>
-            {(categories.length > 0 ? categories : [
-              { _id: "drinkware", name: "Drinkware", slug: "drinkware", image: "/demo/mug-white.svg" },
-              { _id: "apparel", name: "Apparel", slug: "apparel", image: "/demo/tshirt.svg" },
-              { _id: "gifts", name: "Gifts", slug: "gifts-keepsakes", image: "/demo/ornament.svg" },
-              { _id: "seasonal", name: "Seasonal", slug: "seasonal", image: "/demo/calendar.svg" },
-            ]).map((cat, i) => (
-              <Link
-                key={String(cat._id)}
-                href={`/shop?category=${cat.slug}`}
-                className="group card-vibrant flex min-w-[140px] flex-col items-center gap-3 p-4"
-                data-reveal-item
-              >
-                <div className="relative h-20 w-20 overflow-hidden rounded-full bg-gradient-to-br from-chrome-light/30 to-pure-paper">
-                  <DpmProductImage
-                    src={(cat as { image?: string }).image || DEMO_IMAGES[i % DEMO_IMAGES.length]}
-                    alt={cat.name}
-                    fill
-                    showDpmMark
-                    centeredMark={false}
-                    markSize="sm"
-                    imageClassName="object-contain p-2 transition-transform group-hover:scale-110"
-                    sizes="80px"
-                  />
-                </div>
-                <span className="text-sm font-semibold">{cat.name}</span>
-              </Link>
-            ))}
-          </div>
-        </Container>
-      </VibrantSection>
 
       {/* Scroll story */}
       <VibrantSection variant="dark">
@@ -124,9 +99,12 @@ export default async function HomePage() {
             </ol>
           </div>
           <div className="grid grid-cols-2 gap-4">
-            {DEMO_IMAGES.slice(2, 6).map((src) => (
-              <div key={src} className="relative aspect-[4/5] overflow-hidden rounded-sm border border-chrome-mid/30">
-                <Image src={src} alt="Print process visual" fill className="object-contain p-4 bg-carbon" sizes="25vw" />
+            {processImages.map((item) => (
+              <div
+                key={item.src}
+                className="relative aspect-[4/3] overflow-hidden rounded-sm border border-chrome-mid/30 bg-pure-paper"
+              >
+                <Image src={item.src} alt={item.alt} fill className="object-cover" sizes="25vw" />
               </div>
             ))}
           </div>
@@ -169,32 +147,38 @@ export default async function HomePage() {
         </Container>
       </VibrantSection>
 
-      {/* Service cards */}
+      {/* What we print */}
       <VibrantSection variant="mesh">
         <Container>
           <h2 className="heading-section">{cmsHeading(cmsPage, "services", "What we print")}</h2>
-          <div className="mt-10 grid gap-6 md:grid-cols-2 lg:grid-cols-3" data-reveal-stagger>
-            {(services.length > 0 ? services.slice(0, 6) : []).map((service) => (
-              <Link
-                key={String(service._id)}
-                href={`/services/${service.slug}`}
-                className="group card-vibrant overflow-hidden"
-                data-reveal-item
-              >
-                <div className="relative aspect-[16/10] bg-chrome-light/20">
-                  {service.cardImage?.url && (
-                    <Image src={service.cardImage.url} alt={service.title} fill className="object-contain p-6 transition-transform group-hover:scale-105" sizes="33vw" />
-                  )}
-                </div>
-                <div className="p-5">
-                  <h3 className="font-display text-lg font-semibold group-hover:text-royal-blue">{service.title}</h3>
-                  <p className="mt-2 line-clamp-2 text-sm text-carbon">{service.shortDescription}</p>
-                </div>
-              </Link>
-            ))}
-          </div>
-          <div className="mt-8 text-center">
-            <Link href="/services" className={buttonVariants("secondary")}>All services</Link>
+          <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" data-reveal-stagger>
+            {showcaseProducts.map((product) => {
+              const imageUrl =
+                product.cardImage?.url || product.customizedImage?.url || product.blankImage?.url;
+              if (!imageUrl) return null;
+
+              return (
+                <Link
+                  key={String(product._id)}
+                  href={`/shop/${product.slug}`}
+                  className="group card-vibrant overflow-hidden"
+                  data-reveal-item
+                >
+                  <div className="relative aspect-square overflow-hidden bg-pure-paper">
+                    <Image
+                      src={imageUrl}
+                      alt={`${product.name} blank and customized`}
+                      fill
+                      className="object-cover transition-transform duration-500 group-hover:scale-105"
+                      sizes="25vw"
+                    />
+                  </div>
+                  <div className="p-4">
+                    <h3 className="font-display font-semibold group-hover:text-royal-blue">{product.name}</h3>
+                  </div>
+                </Link>
+              );
+            })}
           </div>
         </Container>
       </VibrantSection>
@@ -202,14 +186,12 @@ export default async function HomePage() {
       {/* Customizer preview */}
       <VibrantSection variant="dark">
         <Container className="grid min-w-0 items-center gap-12 lg:grid-cols-2">
-          <div className="relative aspect-square overflow-hidden rounded-sm border border-chrome-mid/30 bg-carbon">
-            <DpmProductImage
-              src="/demo/mug-white.svg"
-              alt="Customizer preview"
+          <div className="relative aspect-square overflow-hidden rounded-sm border border-chrome-mid/30">
+            <Image
+              src="/home/customizer-preview.jpg"
+              alt="Creative design workspace for custom printing"
               fill
-              showDpmMark
-              markSize="lg"
-              imageClassName="object-contain p-8"
+              className="object-cover"
               sizes="50vw"
             />
           </div>
@@ -225,43 +207,28 @@ export default async function HomePage() {
       <VibrantSection variant="light">
         <Container>
           <h2 className="heading-section gradient-heading">Starting prices</h2>
-          <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4" data-reveal-stagger>
-            {(featuredProducts.length > 0 ? featuredProducts.slice(0, 4) : []).map((p) => {
-              const { display } = getProductPriceDisplay(p, p.currency);
-              return (
-                <div key={String(p._id)} className="card-vibrant p-5" data-reveal-item>
-                  <p className="font-semibold">{p.name}</p>
-                  <p className="mt-2 text-2xl font-bold text-royal-blue">{display}</p>
-                </div>
-              );
-            })}
-          </div>
-          <Link href="/shop" className="mt-8 inline-block text-sm font-semibold text-royal-blue hover:underline">View all products →</Link>
-        </Container>
-      </VibrantSection>
-
-      {/* Gallery strip */}
-      <VibrantSection variant="mesh" className="border-t border-chrome-light/40">
-        <Container className="min-w-0">
-          <div className="flex min-w-0 flex-wrap items-end justify-between gap-4">
-            <h2 className="heading-section gradient-heading">Recent work</h2>
-            <Link href="/gallery" className="text-sm font-semibold text-royal-blue hover:underline">View gallery</Link>
-          </div>
-          <div className="mt-8 grid grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-8" data-reveal-stagger>
-            {(galleryStrip.length > 0 ? galleryStrip : DEMO_IMAGES.map((url, i) => ({ _id: String(i), publicUrl: url, alt: `Gallery ${i}` }))).map((item, i) => (
-              <div key={String(item._id || i)} className="card-vibrant relative aspect-square overflow-hidden bg-chrome-light/20" data-reveal-item>
-                <DpmProductImage
-                  src={(item as { publicUrl?: string }).publicUrl || (item as { url?: string }).url || DEMO_IMAGES[i % DEMO_IMAGES.length]}
-                  alt={(item as { alt?: string }).alt || "Gallery image"}
-                  fill
-                  showDpmMark
-                  markSize="sm"
-                  imageClassName="object-contain p-2"
-                  sizes="12vw"
-                />
-              </div>
+          <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" data-reveal-stagger>
+            {PRICING_CATALOG.map((entry) => (
+              <Link
+                key={entry.slug}
+                href={`/shop/${entry.slug}`}
+                className="card-vibrant block p-5 transition-shadow hover:shadow-md"
+                data-reveal-item
+              >
+                <p className="font-semibold">{entry.displayName}</p>
+                <p className="mt-2 text-2xl font-bold text-royal-blue">
+                  {entry.quote ? "Quote" : formatCurrency(entry.price ?? 0)}
+                </p>
+                {entry.note && <p className="mt-1 text-xs text-chrome-mid">{entry.note}</p>}
+                {!entry.quote && entry.minQuantity && entry.minQuantity > 1 && !entry.note && (
+                  <p className="mt-1 text-xs text-chrome-mid">Minimum order {entry.minQuantity}</p>
+                )}
+              </Link>
             ))}
           </div>
+          <Link href="/pricing" className="mt-8 inline-block text-sm font-semibold text-royal-blue hover:underline">
+            Full pricing details →
+          </Link>
         </Container>
       </VibrantSection>
 
@@ -273,29 +240,14 @@ export default async function HomePage() {
             <p className="mt-4 text-chrome-light">We treat every order — from a single mug to a bulk pen run — with the same attention to colour, placement, and durability.</p>
           </div>
           <div className="grid grid-cols-2 gap-4">
-            {DEMO_IMAGES.slice(5, 9).map((src) => (
-              <div key={src} className="relative aspect-square rounded-sm border border-chrome-mid/30">
-                <Image src={src} alt="Quality print sample" fill className="object-contain p-3" sizes="25vw" />
+            {qualitySamples.map((item) => (
+              <div
+                key={item.src}
+                className="relative aspect-square overflow-hidden rounded-sm border border-chrome-mid/30 bg-pure-paper"
+              >
+                <Image src={item.src} alt={item.alt} fill className="object-cover" sizes="25vw" />
               </div>
             ))}
-          </div>
-        </Container>
-      </VibrantSection>
-
-      {/* Gifts section */}
-      <VibrantSection variant="mesh">
-        <Container className="grid min-w-0 items-center gap-12 lg:grid-cols-2">
-          <div className="grid grid-cols-2 gap-4" data-reveal-stagger>
-            {["/demo/ornament.svg", "/demo/keychain.svg", "/demo/magnet.svg", "/demo/calendar.svg"].map((src) => (
-              <div key={src} className="card-vibrant relative aspect-square overflow-hidden" data-reveal-item>
-                <DpmProductImage src={src} alt="Gift product" fill showDpmMark markSize="md" imageClassName="object-contain p-4" sizes="25vw" />
-              </div>
-            ))}
-          </div>
-          <div>
-            <h2 className="heading-section">Meaningful gifts</h2>
-            <p className="mt-4 text-carbon">Ornaments, key chains, magnets, and calendars — personalized keepsakes for every occasion.</p>
-            <Link href="/shop?category=gifts-keepsakes" className={cn(buttonVariants("primary"), "mt-8 inline-flex")}>Shop gifts</Link>
           </div>
         </Container>
       </VibrantSection>

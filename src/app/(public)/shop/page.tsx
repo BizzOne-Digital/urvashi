@@ -11,6 +11,8 @@ import { getPageSection, pageMetadata } from "@/lib/page-content";
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/Button";
 
+export const dynamic = "force-dynamic";
+
 export async function generateMetadata(): Promise<Metadata> {
   const page = await getPublishedPageBySlug("shop");
   return pageMetadata(page, {

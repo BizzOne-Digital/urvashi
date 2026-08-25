@@ -60,6 +60,11 @@ async function skipBySlug(model: mongoose.Model<any>, slug: string): Promise<boo
   return Boolean(existing);
 }
 
+async function skipProductSeed(slug: string, sku: string): Promise<boolean> {
+  const existing = await Product.findOne({ $or: [{ slug }, { sku }] }).select("_id").lean();
+  return Boolean(existing);
+}
+
 async function seedSiteSettings(): Promise<"created" | "skipped"> {
   const existing = await SiteSettings.findOne().select("_id").lean();
   if (existing) {
@@ -322,7 +327,7 @@ async function seedProducts(categoryMap: Map<string, mongoose.Types.ObjectId>): 
 
   let created = 0;
   for (const product of products) {
-    if (await skipBySlug(Product, product.slug)) continue;
+    if (await skipProductSeed(product.slug, product.sku)) continue;
 
     const isQuote = Boolean(product.quote);
     await Product.create({

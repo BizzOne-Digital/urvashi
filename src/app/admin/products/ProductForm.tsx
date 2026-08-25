@@ -33,13 +33,27 @@ interface ProductFormValues {
 
 interface ProductFormProps {
   productId?: string;
-  initialData?: Partial<ProductFormValues> & { images?: Array<{ url: string; alt?: string }> };
+  initialData?: Partial<ProductFormValues> & {
+    images?: Array<{ url: string; alt?: string }>;
+    blankImage?: { url: string; alt?: string };
+    customizedImage?: { url: string; alt?: string };
+    allowsBlankPurchase?: boolean;
+    allowsCustomization?: boolean;
+    designHelpSurcharge?: number;
+    customizer?: { enabled?: boolean; printArea?: { x: number; y: number; width: number; height: number } };
+  };
 }
 
 export function ProductForm({ productId, initialData }: ProductFormProps) {
   const router = useRouter();
   const isNew = !productId || productId === "new";
   const [images, setImages] = useState(initialData?.images || []);
+  const [blankImage, setBlankImage] = useState(initialData?.blankImage);
+  const [customizedImage, setCustomizedImage] = useState(initialData?.customizedImage);
+  const [allowsBlankPurchase, setAllowsBlankPurchase] = useState(initialData?.allowsBlankPurchase ?? true);
+  const [allowsCustomization, setAllowsCustomization] = useState(initialData?.allowsCustomization ?? true);
+  const [designHelpSurcharge, setDesignHelpSurcharge] = useState(initialData?.designHelpSurcharge ?? 5);
+  const [customizerEnabled, setCustomizerEnabled] = useState(initialData?.customizer?.enabled ?? true);
   const [deleting, setDeleting] = useState(false);
 
   const {
@@ -89,6 +103,22 @@ export function ProductForm({ productId, initialData }: ProductFormProps) {
     toast.success("Image uploaded");
   };
 
+  const handleBlankImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const asset = await adminUpload(file, "products");
+    setBlankImage({ url: asset.publicUrl, alt: asset.alt || "Blank product" });
+    toast.success("Blank image uploaded");
+  };
+
+  const handleCustomizedImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const asset = await adminUpload(file, "products");
+    setCustomizedImage({ url: asset.publicUrl, alt: asset.alt || "Customized example" });
+    toast.success("Customized image uploaded");
+  };
+
   const onSubmit = async (data: ProductFormValues) => {
     if (!data.name || !data.sku) {
       toast.error("Name and SKU are required");
@@ -113,12 +143,22 @@ export function ProductForm({ productId, initialData }: ProductFormProps) {
       onSale: data.onSale,
       tags: data.tags ? data.tags.split(",").map((t) => t.trim()).filter(Boolean) : [],
       images,
+      blankImage,
+      customizedImage,
+      allowsBlankPurchase,
+      allowsCustomization,
+      designHelpSurcharge,
       seo: { title: data.seoTitle, description: data.seoDescription },
       variants: [],
       printLocations: [],
       customizationFields: [],
       optionSurcharges: [],
-      customizer: { enabled: false },
+      customizer: {
+        enabled: customizerEnabled,
+        printArea: initialData?.customizer?.printArea || { x: 12, y: 18, width: 76, height: 58 },
+        previewDisclaimer:
+          "Preview is approximate. Final placement, colour, and sizing may vary from what is shown.",
+      },
     };
 
     if (isNew) {
@@ -240,7 +280,71 @@ export function ProductForm({ productId, initialData }: ProductFormProps) {
       </div>
 
       <div className="rounded-lg border border-chrome-light/20 bg-white p-6 shadow-sm">
-        <h2 className="mb-4 text-lg font-semibold">Images</h2>
+        <h2 className="mb-4 text-lg font-semibold">Blank & Customized Images</h2>
+        <p className="mb-4 text-sm text-chrome-mid">
+          Shop cards show both images side by side. Product detail tabs use blank and customized images separately.
+        </p>
+        <div className="grid gap-6 sm:grid-cols-2">
+          <div>
+            <p className="mb-2 text-sm font-medium">Blank image</p>
+            {blankImage && (
+              <div className="relative mb-3 h-32 w-full overflow-hidden rounded-md border">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={blankImage.url} alt={blankImage.alt || "Blank"} className="h-full w-full object-contain" />
+              </div>
+            )}
+            <input type="file" accept="image/*" onChange={handleBlankImageUpload} />
+          </div>
+          <div>
+            <p className="mb-2 text-sm font-medium">Customized example image</p>
+            {customizedImage && (
+              <div className="relative mb-3 h-32 w-full overflow-hidden rounded-md border">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={customizedImage.url}
+                  alt={customizedImage.alt || "Customized"}
+                  className="h-full w-full object-contain"
+                />
+              </div>
+            )}
+            <input type="file" accept="image/*" onChange={handleCustomizedImageUpload} />
+          </div>
+        </div>
+        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={allowsBlankPurchase}
+              onChange={(e) => setAllowsBlankPurchase(e.target.checked)}
+            />
+            Allow blank purchase (Add to cart)
+          </label>
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={allowsCustomization}
+              onChange={(e) => setAllowsCustomization(e.target.checked)}
+            />
+            Allow customization requests
+          </label>
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={customizerEnabled} onChange={(e) => setCustomizerEnabled(e.target.checked)} />
+            Customizer enabled
+          </label>
+          <FormField label="Design help surcharge ($)">
+            <input
+              type="number"
+              step="0.01"
+              className={inputClass}
+              value={designHelpSurcharge}
+              onChange={(e) => setDesignHelpSurcharge(parseFloat(e.target.value) || 0)}
+            />
+          </FormField>
+        </div>
+      </div>
+
+      <div className="rounded-lg border border-chrome-light/20 bg-white p-6 shadow-sm">
+        <h2 className="mb-4 text-lg font-semibold">Gallery Images</h2>
         <div className="mb-4 flex flex-wrap gap-3">
           {images.map((img, i) => (
             <div key={i} className="relative h-24 w-24 overflow-hidden rounded-md border">

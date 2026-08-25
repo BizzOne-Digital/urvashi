@@ -1,6 +1,6 @@
 "use client";
 
-import { useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import gsap from "gsap";
 import { Logo } from "@/components/ui/Logo";
 import { clearIntroPending, INTRO_SEEN_KEY, shouldPlayIntro } from "@/lib/intro-session";
@@ -17,7 +17,7 @@ export function CinematicIntro({ logoPath, shortName, enabled = true, onComplete
   const containerRef = useRef<HTMLDivElement>(null);
   const reducedMotion = useRef(false);
 
-  const finish = () => {
+  const finish = useCallback(() => {
     try {
       sessionStorage.setItem(INTRO_SEEN_KEY, "1");
     } catch {
@@ -26,7 +26,7 @@ export function CinematicIntro({ logoPath, shortName, enabled = true, onComplete
     clearIntroPending();
     setVisible(false);
     onComplete?.();
-  };
+  }, [onComplete]);
 
   useLayoutEffect(() => {
     if (!enabled) {
@@ -70,7 +70,7 @@ export function CinematicIntro({ logoPath, shortName, enabled = true, onComplete
     }, containerRef);
 
     return () => ctx.revert();
-  }, [visible]);
+  }, [visible, finish]);
 
   if (!visible) return null;
 

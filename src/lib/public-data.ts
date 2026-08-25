@@ -32,7 +32,10 @@ async function safeQuery<T>(fn: () => Promise<T>, fallback: T): Promise<T> {
   try {
     await connectDB();
     return await fn();
-  } catch {
+  } catch (error) {
+    if (process.env.NODE_ENV === "development") {
+      console.error("[public-data] Database query failed:", error);
+    }
     return fallback;
   }
 }
@@ -43,13 +46,18 @@ export type PlainService = ReturnType<typeof toPlain<IService>>;
 export const getFeaturedProducts = unstable_cache(
   async (limit = 8) =>
     safeQuery(async () => {
-      const products = await Product.find({ status: "published", featured: true })
+      let products = await Product.find({ status: "published", featured: true })
         .sort({ name: 1 })
         .limit(limit)
         .lean();
+
+      if (products.length === 0) {
+        products = await Product.find({ status: "published" }).sort({ name: 1 }).limit(limit).lean();
+      }
+
       return toPlain(products);
     }, []),
-  ["featured-products"],
+  ["featured-products-v3"],
   { tags: [CACHE_TAGS.products], revalidate: 60 }
 );
 
@@ -59,7 +67,7 @@ export const getPublishedProducts = unstable_cache(
       const products = await Product.find({ status: "published" }).sort({ name: 1 }).lean();
       return toPlain(products);
     }, []),
-  ["published-products"],
+  ["published-products-v2"],
   { tags: [CACHE_TAGS.products], revalidate: 60 }
 );
 

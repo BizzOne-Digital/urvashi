@@ -42,6 +42,12 @@ export default async function AdminProductEditPage({ params }: Params) {
         seoTitle: data.seo?.title,
         seoDescription: data.seo?.description,
         images: data.images,
+        blankImage: data.blankImage,
+        customizedImage: data.customizedImage,
+        allowsBlankPurchase: data.allowsBlankPurchase,
+        allowsCustomization: data.allowsCustomization,
+        designHelpSurcharge: data.designHelpSurcharge,
+        customizer: data.customizer,
       }}
     />
   );

@@ -16,6 +16,7 @@
     "create-admin": "tsx scripts/create-admin.ts",
     "uploads:cleanup:dry": "tsx scripts/uploads-cleanup.ts --dry-run",
     "sync-pricing": "tsx scripts/sync-pricing.ts",
+    "sync-products": "tsx scripts/sync-products.ts",
     "sync-services": "tsx scripts/ensure-custom-printing-service.ts",
     "test": "vitest run",
     "test:watch": "vitest"

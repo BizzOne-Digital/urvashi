@@ -55,6 +55,12 @@ export interface IProduct extends Document {
   }>;
   optionSurcharges: Array<{ optionId: string; value: string; surcharge: number }>;
   images: IMediaRef[];
+  blankImage?: IMediaRef;
+  customizedImage?: IMediaRef;
+  cardImage?: IMediaRef;
+  allowsBlankPurchase: boolean;
+  allowsCustomization: boolean;
+  designHelpSurcharge: number;
   customizer: ICustomizerConfig;
   featured: boolean;
   onSale: boolean;
@@ -120,6 +126,12 @@ const ProductSchema = new Schema<IProduct>(
     ],
     optionSurcharges: [{ optionId: String, value: String, surcharge: Number }],
     images: [MediaRefSchema],
+    blankImage: MediaRefSchema,
+    customizedImage: MediaRefSchema,
+    cardImage: MediaRefSchema,
+    allowsBlankPurchase: { type: Boolean, default: true },
+    allowsCustomization: { type: Boolean, default: true },
+    designHelpSurcharge: { type: Number, default: 5 },
     customizer: {
       enabled: { type: Boolean, default: false },
       templateType: String,

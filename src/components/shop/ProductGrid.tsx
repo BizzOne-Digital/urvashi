@@ -9,6 +9,9 @@ interface ProductGridProps {
     slug: string;
     shortDescription?: string;
     images?: Array<{ url: string; alt?: string }>;
+    blankImage?: { url: string; alt?: string };
+    customizedImage?: { url: string; alt?: string };
+    cardImage?: { url: string; alt?: string };
     pricingMode?: "fixed" | "quote";
     availability?: string;
     price?: number;
