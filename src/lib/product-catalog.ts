@@ -78,6 +78,17 @@ export const SHOP_PRODUCTS = [
     customizedImage: "/products/glass-tumblers/customized.png",
     featured: true,
   },
+  {
+    name: "Sublimation Mug",
+    slug: "sublimation-mug",
+    sku: "DPM-MUG-SUB",
+    price: 14.99,
+    categorySlug: "drinkware",
+    primaryImage: "/products/sublimation-mug/blank.png",
+    cardImage: "/products/sublimation-mug/card.png",
+    customizedImage: "/products/sublimation-mug/customized.png",
+    featured: true,
+  },
 ] as const;
 
 export const DESIGN_HELP_SURCHARGE = 5;
