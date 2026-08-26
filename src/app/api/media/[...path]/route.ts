@@ -1,16 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { readFile } from "fs/promises";
-import path from "path";
-import { getPublicMediaPath } from "@/lib/media";
+import { connectDB } from "@/lib/db";
+import MediaAsset from "@/models/MediaAsset";
+import { getStoredUpload, parseUploadUrl } from "@/lib/stored-uploads";
 
-const MIME_TYPES: Record<string, string> = {
-  ".webp": "image/webp",
-  ".jpg": "image/jpeg",
-  ".jpeg": "image/jpeg",
-  ".png": "image/png",
-  ".avif": "image/avif",
-  ".gif": "image/gif",
-};
+export const runtime = "nodejs";
 
 export async function GET(
   _request: NextRequest,
@@ -33,19 +26,32 @@ export async function GET(
       return NextResponse.json({ error: "Invalid path" }, { status: 400 });
     }
 
-    const filePath = await getPublicMediaPath(mediaPath);
-    if (!filePath) {
+    await connectDB();
+    const asset = await MediaAsset.findOne({
+      $or: [{ publicUrl: `/media/${mediaPath}` }, { diskPath: `public/${mediaPath}` }],
+    }).lean();
+
+    if (!asset?.publicUrl) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
-    const buffer = await readFile(filePath);
-    const ext = path.extname(filePath).toLowerCase();
-    const contentType = MIME_TYPES[ext] || "application/octet-stream";
+    const parsed = parseUploadUrl(asset.publicUrl);
+    if (!parsed) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
 
-    return new NextResponse(buffer, {
+    const doc = await getStoredUpload(parsed.folder, parsed.filename);
+    if (!doc?.data || doc.access === "private") {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+
+    const buffer = Buffer.isBuffer(doc.data) ? doc.data : Buffer.from(doc.data);
+
+    return new NextResponse(new Uint8Array(buffer), {
       status: 200,
       headers: {
-        "Content-Type": contentType,
+        "Content-Type": doc.mimeType,
+        "Content-Length": String(buffer.length),
         "Cache-Control": "public, max-age=31536000, immutable",
       },
     });

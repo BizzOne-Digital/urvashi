@@ -13,7 +13,13 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   output: "standalone",
   images: {
-    remotePatterns: [],
+    localPatterns: [
+      { pathname: "/api/uploads/**" },
+      { pathname: "/products/**" },
+      { pathname: "/demo/**" },
+      { pathname: "/home/**" },
+      { pathname: "/brand/**" },
+    ],
     unoptimized: false,
   },
   async headers() {

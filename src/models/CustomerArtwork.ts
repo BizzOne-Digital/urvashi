@@ -3,6 +3,7 @@ import mongoose, { Schema, Document, Model } from "mongoose";
 export interface ICustomerArtwork extends Document {
   originalName: string;
   diskPath: string;
+  storedUploadId?: mongoose.Types.ObjectId;
   mimeType: string;
   bytes: number;
   checksum?: string;
@@ -23,6 +24,7 @@ const CustomerArtworkSchema = new Schema<ICustomerArtwork>(
   {
     originalName: { type: String, required: true },
     diskPath: { type: String, required: true },
+    storedUploadId: { type: Schema.Types.ObjectId, ref: "StoredUpload" },
     mimeType: { type: String, required: true },
     bytes: { type: Number, required: true },
     checksum: String,

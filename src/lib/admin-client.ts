@@ -1,6 +1,7 @@
 "use client";
 
 import { toast } from "sonner";
+import { resolveUploadFolder } from "@/lib/upload-folders";
 
 export async function adminFetch<T = unknown>(
   url: string,
@@ -31,11 +32,13 @@ export async function adminFetch<T = unknown>(
 }
 
 export async function adminUpload(file: File, category?: string) {
+  const folder = category ? resolveUploadFolder(category) ?? "misc" : "misc";
+
   const formData = new FormData();
   formData.append("file", file);
-  if (category) formData.append("category", category);
+  formData.append("folder", folder);
 
-  const res = await fetch("/api/admin/upload", { method: "POST", body: formData });
+  const res = await fetch("/api/upload", { method: "POST", body: formData });
   const data = await res.json();
 
   if (!res.ok) {
@@ -43,10 +46,10 @@ export async function adminUpload(file: File, category?: string) {
     throw new Error(data.error || "Upload failed");
   }
 
-  return data.asset as {
-    id: string;
-    publicUrl: string;
-    alt?: string;
-    caption?: string;
+  return {
+    id: data.filename,
+    publicUrl: data.url,
+    alt: file.name,
+    caption: undefined,
   };
 }

@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { Button, buttonVariants } from "@/components/ui/Button";
 import { Container } from "@/components/ui/Container";
 import { DESIGN_HELP_SURCHARGE, getProductDisplayImages } from "@/lib/product-catalog";
+import { resolveImageSrc } from "@/lib/image-url";
 import { formatCurrency } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 
@@ -33,7 +34,7 @@ interface ProductCustomizeFormProps {
 export function ProductCustomizeForm({ product }: ProductCustomizeFormProps) {
   const router = useRouter();
   const { blank, customized } = getProductDisplayImages(product);
-  const baseImage = customized?.url || blank?.url || "/demo/ink-lab.svg";
+  const baseImage = resolveImageSrc(customized?.url || blank?.url);
   const printArea = product.customizer?.printArea || { x: 12, y: 18, width: 76, height: 58 };
   const designFee = product.designHelpSurcharge ?? DESIGN_HELP_SURCHARGE;
   const basePrice = product.price ?? 0;

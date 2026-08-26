@@ -3,6 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { getProductDisplayImages } from "@/lib/product-catalog";
+import { resolveImageSrc } from "@/lib/image-url";
 import { getProductPriceDisplay } from "@/lib/pricing";
 import { cn } from "@/lib/utils";
 
@@ -40,7 +41,7 @@ export function ProductCard({ product, className, priority = false }: ProductCar
         <div className="relative aspect-square overflow-hidden bg-gradient-to-br from-chrome-light/30 via-pure-paper to-chrome-light/20">
           {product.cardImage ? (
             <Image
-              src={product.cardImage.url}
+              src={resolveImageSrc(product.cardImage.url)}
               alt={product.cardImage.alt || `${product.name} blank and customized`}
               fill
               className="object-cover transition-transform duration-500 group-hover:scale-105"
@@ -51,7 +52,7 @@ export function ProductCard({ product, className, priority = false }: ProductCar
             <div className="grid h-full w-full grid-cols-2">
               <div className="relative border-r border-chrome-light/40 bg-pure-paper">
                 <Image
-                  src={blank.url}
+                  src={resolveImageSrc(blank.url)}
                   alt={blank.alt || `${product.name} blank`}
                   fill
                   className="object-contain p-3"
@@ -64,7 +65,7 @@ export function ProductCard({ product, className, priority = false }: ProductCar
               </div>
               <div className="relative bg-gradient-to-br from-royal-blue/5 to-cyan/10">
                 <Image
-                  src={customized.url}
+                  src={resolveImageSrc(customized.url)}
                   alt={customized.alt || `${product.name} customized`}
                   fill
                   className="object-contain p-3 transition-transform duration-500 group-hover:scale-105"
@@ -78,7 +79,7 @@ export function ProductCard({ product, className, priority = false }: ProductCar
             </div>
           ) : blank ? (
             <Image
-              src={blank.url}
+              src={resolveImageSrc(blank.url)}
               alt={blank.alt || product.name}
               fill
               className="object-contain p-6 transition-transform duration-500 group-hover:scale-110"

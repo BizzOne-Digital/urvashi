@@ -3,6 +3,8 @@ import { z } from "zod";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
 import { uploadPrivateArtwork } from "@/lib/media";
 
+export const runtime = "nodejs";
+
 const artworkMetaSchema = z.object({
   customerNote: z.string().max(1000).optional(),
   rightsConfirmed: z

@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form";
 import { adminFetch, adminUpload } from "@/lib/admin-client";
 import { Button } from "@/components/ui/Button";
 import { FormField, inputClass, textareaClass, selectClass } from "@/components/admin/FormField";
+import { LocalImageField } from "@/components/admin/LocalImageField";
 import { slugify } from "@/lib/utils";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -101,22 +102,6 @@ export function ProductForm({ productId, initialData }: ProductFormProps) {
     const asset = await adminUpload(file, "products");
     setImages((prev) => [...prev, { url: asset.publicUrl, alt: asset.alt }]);
     toast.success("Image uploaded");
-  };
-
-  const handleBlankImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const asset = await adminUpload(file, "products");
-    setBlankImage({ url: asset.publicUrl, alt: asset.alt || "Blank product" });
-    toast.success("Blank image uploaded");
-  };
-
-  const handleCustomizedImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const asset = await adminUpload(file, "products");
-    setCustomizedImage({ url: asset.publicUrl, alt: asset.alt || "Customized example" });
-    toast.success("Customized image uploaded");
   };
 
   const onSubmit = async (data: ProductFormValues) => {
@@ -285,30 +270,22 @@ export function ProductForm({ productId, initialData }: ProductFormProps) {
           Shop cards show both images side by side. Product detail tabs use blank and customized images separately.
         </p>
         <div className="grid gap-6 sm:grid-cols-2">
-          <div>
-            <p className="mb-2 text-sm font-medium">Blank image</p>
-            {blankImage && (
-              <div className="relative mb-3 h-32 w-full overflow-hidden rounded-md border">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={blankImage.url} alt={blankImage.alt || "Blank"} className="h-full w-full object-contain" />
-              </div>
-            )}
-            <input type="file" accept="image/*" onChange={handleBlankImageUpload} />
-          </div>
-          <div>
-            <p className="mb-2 text-sm font-medium">Customized example image</p>
-            {customizedImage && (
-              <div className="relative mb-3 h-32 w-full overflow-hidden rounded-md border">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={customizedImage.url}
-                  alt={customizedImage.alt || "Customized"}
-                  className="h-full w-full object-contain"
-                />
-              </div>
-            )}
-            <input type="file" accept="image/*" onChange={handleCustomizedImageUpload} />
-          </div>
+          <LocalImageField
+            label="Blank image"
+            folder="products"
+            value={blankImage?.url}
+            onChange={(url) =>
+              setBlankImage(url ? { url, alt: blankImage?.alt || "Blank product" } : undefined)
+            }
+          />
+          <LocalImageField
+            label="Customized example image"
+            folder="products"
+            value={customizedImage?.url}
+            onChange={(url) =>
+              setCustomizedImage(url ? { url, alt: customizedImage?.alt || "Customized example" } : undefined)
+            }
+          />
         </div>
         <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <label className="flex items-center gap-2 text-sm">

@@ -1,40 +1,28 @@
-import path from "path";
-import fs from "fs/promises";
-import { existsSync } from "fs";
-import { v4 as uuidv4 } from "uuid";
-import sharp from "sharp";
 import { connectDB } from "./db";
 import MediaAsset from "@/models/MediaAsset";
 import CustomerArtwork from "@/models/CustomerArtwork";
-
-const UPLOAD_DIR = process.env.UPLOAD_DIR || "./uploads";
-const PUBLIC_MAX_BYTES = 12 * 1024 * 1024;
-const PRIVATE_MAX_BYTES = 25 * 1024 * 1024;
-
-const PUBLIC_MIME_TYPES = new Set([
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-  "image/avif",
-]);
-
-const PRIVATE_MIME_TYPES = new Set([
-  "image/jpeg",
-  "image/png",
-  "application/pdf",
-]);
+import {
+  ARTWORK_MAX_BYTES,
+  ARTWORK_MIME_TYPES,
+  ADMIN_MAX_BYTES,
+  ADMIN_UPLOAD_MIME_TYPES,
+  buildUploadUrl,
+  deleteStoredUploadByUrl,
+  getStoredUpload,
+  getStoredUploadById,
+  parseUploadUrl,
+  resolveUploadFolder,
+  saveStoredUpload,
+  type UploadFolder,
+} from "./stored-uploads";
 
 const SIGNATURES: Record<string, number[][]> = {
   "image/jpeg": [[0xff, 0xd8, 0xff]],
   "image/png": [[0x89, 0x50, 0x4e, 0x47]],
   "image/webp": [[0x52, 0x49, 0x46, 0x46]],
-  "image/avif": [[0x00, 0x00, 0x00]],
+  "image/gif": [[0x47, 0x49, 0x46]],
   "application/pdf": [[0x25, 0x50, 0x44, 0x46]],
 };
-
-function getUploadRoot(): string {
-  return path.resolve(process.cwd(), UPLOAD_DIR);
-}
 
 function validateSignature(buffer: Buffer, mimeType: string): boolean {
   const sigs = SIGNATURES[mimeType];
@@ -42,24 +30,9 @@ function validateSignature(buffer: Buffer, mimeType: string): boolean {
   return sigs.some((sig) => sig.every((byte, i) => buffer[i] === byte));
 }
 
-function getDatePath(): string {
-  const now = new Date();
-  const y = now.getFullYear();
-  const m = (now.getMonth() + 1).toString().padStart(2, "0");
-  return `${y}/${m}`;
-}
-
-export function resolveSafePath(relativePath: string): string | null {
-  const root = getUploadRoot();
-  const resolved = path.resolve(root, relativePath);
-  if (!resolved.startsWith(root)) return null;
-  return resolved;
-}
-
-export async function ensureUploadDirs(): Promise<void> {
-  const root = getUploadRoot();
-  await fs.mkdir(path.join(root, "public"), { recursive: true });
-  await fs.mkdir(path.join(root, "private", "customer-artwork"), { recursive: true });
+function mapCategoryToFolder(category?: string): UploadFolder {
+  const folder = category ? resolveUploadFolder(category) : null;
+  return folder ?? "misc";
 }
 
 export async function uploadPublicMedia(
@@ -73,70 +46,30 @@ export async function uploadPublicMedia(
     uploadedBy?: string;
   } = {}
 ) {
-  if (!PUBLIC_MIME_TYPES.has(mimeType)) {
+  if (!ADMIN_UPLOAD_MIME_TYPES.has(mimeType)) {
     throw new Error("Invalid file type for public media");
   }
-  if (buffer.length > PUBLIC_MAX_BYTES) {
-    throw new Error("File exceeds maximum size of 12MB");
-  }
-  if (!validateSignature(buffer, mimeType)) {
-    throw new Error("File signature does not match declared type");
+  if (buffer.length > ADMIN_MAX_BYTES) {
+    throw new Error("File exceeds maximum size of 8MB");
   }
 
-  await ensureUploadDirs();
-  const datePath = getDatePath();
-  const filename = `${uuidv4()}.webp`;
-  const relativePath = `public/${datePath}/${filename}`;
-  const fullPath = path.join(getUploadRoot(), relativePath);
-  await fs.mkdir(path.dirname(fullPath), { recursive: true });
+  const folder = mapCategoryToFolder(meta.category);
 
-  let width: number | undefined;
-  let height: number | undefined;
-
-  try {
-    const processed = await sharp(buffer)
-      .rotate()
-      .webp({ quality: 85 })
-      .toBuffer({ resolveWithObject: true });
-    await fs.writeFile(fullPath, processed.data);
-    width = processed.info.width;
-    height = processed.info.height;
-  } catch {
-    const ext = mimeType === "image/png" ? "png" : "jpg";
-    const altFilename = `${uuidv4()}.${ext}`;
-    const altRelative = `public/${datePath}/${altFilename}`;
-    const altFull = path.join(getUploadRoot(), altRelative);
-    await fs.writeFile(altFull, buffer);
-    const relativePath2 = altRelative;
-    const publicUrl = `/media/${datePath}/${altFilename}`;
-
-    await connectDB();
-    const asset = await MediaAsset.create({
-      originalName,
-      diskPath: relativePath2,
-      publicUrl,
-      mimeType,
-      bytes: buffer.length,
-      alt: meta.alt,
-      caption: meta.caption,
-      category: meta.category,
-      isPrivate: false,
-      uploadedBy: meta.uploadedBy,
-    });
-    return asset;
-  }
-
-  const publicUrl = `/media/${datePath}/${filename}`;
+  const stored = await saveStoredUpload({
+    folder,
+    buffer,
+    mimeType,
+    access: "public",
+    originalName,
+  });
 
   await connectDB();
   const asset = await MediaAsset.create({
     originalName,
-    diskPath: relativePath,
-    publicUrl,
-    mimeType: "image/webp",
-    bytes: buffer.length,
-    width,
-    height,
+    diskPath: `${folder}/${stored.filename}`,
+    publicUrl: stored.url,
+    mimeType,
+    bytes: stored.size,
     alt: meta.alt,
     caption: meta.caption,
     category: meta.category,
@@ -158,10 +91,10 @@ export async function uploadPrivateArtwork(
     uploadedBy?: string;
   }
 ) {
-  if (!PRIVATE_MIME_TYPES.has(mimeType)) {
+  if (!ARTWORK_MIME_TYPES.has(mimeType)) {
     throw new Error("Invalid file type for artwork upload");
   }
-  if (buffer.length > PRIVATE_MAX_BYTES) {
+  if (buffer.length > ARTWORK_MAX_BYTES) {
     throw new Error("File exceeds maximum size of 25MB");
   }
   if (!validateSignature(buffer, mimeType)) {
@@ -171,21 +104,21 @@ export async function uploadPrivateArtwork(
     throw new Error("Rights confirmation required");
   }
 
-  await ensureUploadDirs();
-  const datePath = getDatePath();
-  const ext = mimeType === "application/pdf" ? "pdf" : mimeType === "image/png" ? "png" : "jpg";
-  const filename = `${uuidv4()}.${ext}`;
-  const relativePath = `private/customer-artwork/${datePath}/${filename}`;
-  const fullPath = path.join(getUploadRoot(), relativePath);
-  await fs.mkdir(path.dirname(fullPath), { recursive: true });
-  await fs.writeFile(fullPath, buffer);
+  const stored = await saveStoredUpload({
+    folder: "misc",
+    buffer,
+    mimeType,
+    access: "private",
+    originalName,
+  });
 
   await connectDB();
   const artwork = await CustomerArtwork.create({
     originalName,
-    diskPath: relativePath,
+    diskPath: `misc/${stored.filename}`,
+    storedUploadId: stored.id,
     mimeType,
-    bytes: buffer.length,
+    bytes: stored.size,
     customerNote: meta.customerNote,
     rightsConfirmed: meta.rightsConfirmed,
     cartSessionId: meta.cartSessionId,
@@ -195,8 +128,8 @@ export async function uploadPrivateArtwork(
   return { id: artwork._id.toString(), originalName };
 }
 
-export async function getPrivateArtworkPath(artworkId: string): Promise<{
-  path: string;
+export async function getPrivateArtworkBuffer(artworkId: string): Promise<{
+  buffer: Buffer;
   mimeType: string;
   originalName: string;
 } | null> {
@@ -204,27 +137,37 @@ export async function getPrivateArtworkPath(artworkId: string): Promise<{
   const artwork = await CustomerArtwork.findById(artworkId);
   if (!artwork) return null;
 
-  const fullPath = resolveSafePath(artwork.diskPath);
-  if (!fullPath || !existsSync(fullPath)) return null;
-
-  return {
-    path: fullPath,
-    mimeType: artwork.mimeType,
-    originalName: artwork.originalName,
-  };
-}
-
-export async function getPublicMediaPath(mediaPath: string): Promise<string | null> {
-  const safePath = resolveSafePath(`public/${mediaPath}`);
-  if (!safePath || !existsSync(safePath)) return null;
-  return safePath;
-}
-
-export function isUploadDirWritable(): boolean {
-  try {
-    const root = getUploadRoot();
-    return existsSync(root) || true;
-  } catch {
-    return false;
+  if (artwork.storedUploadId) {
+    const stored = await getStoredUploadById(artwork.storedUploadId.toString());
+    if (!stored?.data) return null;
+    const buffer = Buffer.isBuffer(stored.data) ? stored.data : Buffer.from(stored.data);
+    return {
+      buffer,
+      mimeType: stored.mimeType,
+      originalName: artwork.originalName,
+    };
   }
+
+  const legacyUrl = artwork.diskPath.startsWith("/")
+    ? artwork.diskPath
+    : buildUploadUrl("misc", artwork.diskPath.replace(/^misc\//, ""));
+
+  const parsed = parseUploadUrl(legacyUrl);
+  if (parsed) {
+    const stored = await getStoredUpload(parsed.folder, parsed.filename);
+    if (!stored?.data) return null;
+    const buffer = Buffer.isBuffer(stored.data) ? stored.data : Buffer.from(stored.data);
+    return {
+      buffer,
+      mimeType: stored.mimeType,
+      originalName: artwork.originalName,
+    };
+  }
+
+  return null;
+}
+
+export async function deleteUploadByUrl(url: string): Promise<boolean> {
+  if (!url.startsWith("/api/uploads/")) return false;
+  return deleteStoredUploadByUrl(url);
 }

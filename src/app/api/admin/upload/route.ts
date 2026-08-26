@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin, unauthorizedResponse } from "@/lib/auth-helpers";
 import { uploadPublicMedia } from "@/lib/media";
 
+export const runtime = "nodejs";
+
+/** Legacy admin upload — stores in MongoDB via stored-uploads */
 export async function POST(request: NextRequest) {
   let session;
   try {

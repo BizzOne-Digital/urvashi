@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { readFile } from "fs/promises";
 import { requireAdmin, unauthorizedResponse } from "@/lib/auth-helpers";
-import { getPrivateArtworkPath } from "@/lib/media";
+import { getPrivateArtworkBuffer } from "@/lib/media";
+
+export const runtime = "nodejs";
 
 export async function GET(
   _request: NextRequest,
@@ -15,20 +16,20 @@ export async function GET(
 
   try {
     const { id } = await params;
-    const artwork = await getPrivateArtworkPath(id);
+    const artwork = await getPrivateArtworkBuffer(id);
 
     if (!artwork) {
       return NextResponse.json({ error: "Artwork not found" }, { status: 404 });
     }
 
-    const buffer = await readFile(artwork.path);
     const safeName = artwork.originalName.replace(/[^\w.\- ]/g, "_");
 
-    return new NextResponse(buffer, {
+    return new NextResponse(new Uint8Array(artwork.buffer), {
       status: 200,
       headers: {
         "Content-Type": artwork.mimeType,
         "Content-Disposition": `attachment; filename="${safeName}"`,
+        "Content-Length": String(artwork.buffer.length),
         "Cache-Control": "private, no-store",
       },
     });
