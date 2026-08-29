@@ -37,6 +37,24 @@ interface CustomizerStudioProps {
 const DEFAULT_FONTS = ["Inter", "Georgia", "Arial", "Impact"];
 const DEFAULT_COLORS = ["#090909", "#065EE5", "#DE4098", "#F3C722", "#FEFEFE"];
 
+const COLOR_LABELS: Record<string, string> = {
+  "#090909": "Black",
+  "#065EE5": "Royal blue",
+  "#DE4098": "Magenta",
+  "#F3C722": "Yellow",
+  "#FEFEFE": "White",
+};
+
+function getColorLabel(hex: string): string {
+  const normalized = hex.trim().toUpperCase();
+  return COLOR_LABELS[normalized] || COLOR_LABELS[hex] || "Custom";
+}
+
+function isLightColor(hex: string): boolean {
+  const normalized = hex.trim().toUpperCase();
+  return normalized === "#FEFEFE" || normalized === "#FFFFFF";
+}
+
 export function CustomizerStudio({
   products,
   rightsConfirmationCopy = "I confirm that I have the right to use this artwork for printing purposes.",
@@ -168,10 +186,42 @@ export function CustomizerStudio({
             </select>
           </div>
           <div>
-            <label htmlFor="color-select" className="mb-1 block text-sm font-medium">Colour</label>
-            <select id="color-select" value={color} onChange={(e) => setColor(e.target.value)} className={fieldClass}>
-              {colors.map((c) => <option key={c} value={c}>{c}</option>)}
-            </select>
+            <p className="mb-2 block text-sm font-medium">Colour</p>
+            <div className="flex flex-wrap gap-3" role="listbox" aria-label="Choose a colour">
+              {colors.map((c) => {
+                const selected = color === c;
+                return (
+                  <button
+                    key={c}
+                    type="button"
+                    role="option"
+                    aria-selected={selected}
+                    aria-label={getColorLabel(c)}
+                    onClick={() => setColor(c)}
+                    className="group flex flex-col items-center gap-1.5 rounded-sm p-1 transition-transform hover:scale-105"
+                  >
+                    <span
+                      className={cn(
+                        "h-10 w-10 rounded-full border-2 shadow-sm transition-all",
+                        isLightColor(c) ? "border-chrome-mid/60" : "border-transparent",
+                        selected
+                          ? "ring-2 ring-cyan ring-offset-2 ring-offset-pure-paper scale-110 shadow-[0_0_12px_rgba(13,151,252,0.45)]"
+                          : "group-hover:ring-2 group-hover:ring-chrome-mid/40 group-hover:ring-offset-1 group-hover:ring-offset-pure-paper"
+                      )}
+                      style={{ backgroundColor: c }}
+                    />
+                    <span
+                      className={cn(
+                        "text-[10px] font-semibold uppercase tracking-wide",
+                        selected ? "text-cyan" : "text-chrome-mid group-hover:text-carbon"
+                      )}
+                    >
+                      {getColorLabel(c)}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
 

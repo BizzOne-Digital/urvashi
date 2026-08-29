@@ -36,8 +36,9 @@ export interface ISiteSettings extends Document {
   social: ISocialLink[];
   commerce: {
     manualInvoiceInstructions?: string;
-    taxMode: "none" | "manual" | "configured";
+    taxMode: "none" | "manual" | "configured" | "canadian";
     taxRate?: number;
+    originPostalCode?: string;
     shippingModes: string[];
     pickupEnabled: boolean;
     returnNotes?: string;
@@ -109,8 +110,13 @@ const SiteSettingsSchema = new Schema<ISiteSettings>(
     ],
     commerce: {
       manualInvoiceInstructions: String,
-      taxMode: { type: String, enum: ["none", "manual", "configured"], default: "none" },
+      taxMode: {
+        type: String,
+        enum: ["none", "manual", "configured", "canadian"],
+        default: "canadian",
+      },
       taxRate: Number,
+      originPostalCode: String,
       shippingModes: [String],
       pickupEnabled: { type: Boolean, default: false },
       returnNotes: String,

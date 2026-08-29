@@ -17,15 +17,16 @@ export function PageMotionProvider({ children }: { children: React.ReactNode }) 
     const ctx = gsap.context(() => {
       gsap.utils.toArray<HTMLElement>("[data-reveal]").forEach((el) => {
         const delay = Number(el.dataset.revealDelay || 0);
-        const y = Number(el.dataset.revealY || 40);
+        const y = Number(el.dataset.revealY || 48);
 
         gsap.fromTo(
           el,
-          { opacity: 0, y },
+          { opacity: 0, y, filter: "blur(8px)" },
           {
             opacity: 1,
             y: 0,
-            duration: 0.85,
+            filter: "blur(0px)",
+            duration: 1,
             delay,
             ease: "power3.out",
             scrollTrigger: {
@@ -43,12 +44,13 @@ export function PageMotionProvider({ children }: { children: React.ReactNode }) 
 
         gsap.fromTo(
           items,
-          { opacity: 0, y: 32 },
+          { opacity: 0, y: 40, scale: 0.96 },
           {
             opacity: 1,
             y: 0,
-            duration: 0.7,
-            stagger: 0.08,
+            scale: 1,
+            duration: 0.85,
+            stagger: 0.1,
             ease: "power3.out",
             scrollTrigger: {
               trigger: container,

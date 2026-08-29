@@ -103,13 +103,13 @@ export function ProductCard({ product, className, priority = false }: ProductCar
               {product.categorySlug.replace(/-/g, " ")}
             </p>
           )}
-          <h3 className="mt-1 font-display text-lg font-semibold text-ink-black transition-colors group-hover:text-royal-blue">
+          <h3 className="mt-1 font-display text-lg font-semibold text-pure-paper transition-colors group-hover:text-cyan">
             {product.name}
           </h3>
           {product.shortDescription && (
-            <p className="mt-1 line-clamp-2 text-sm text-carbon">{product.shortDescription}</p>
+            <p className="mt-1 line-clamp-2 text-sm text-chrome-light">{product.shortDescription}</p>
           )}
-          <p className={cn("mt-auto pt-3 text-lg font-bold", isQuote ? "text-deep-magenta" : "text-royal-blue")}>
+          <p className={cn("mt-auto pt-3 text-lg font-bold", isQuote ? "text-magenta" : "text-cyan")}>
             {display}
             {!isQuote && <span className="ml-2 text-xs font-normal text-chrome-mid">blank from</span>}
           </p>

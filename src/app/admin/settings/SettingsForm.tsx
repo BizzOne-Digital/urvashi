@@ -161,21 +161,25 @@ export function SettingsForm({ initialData }: { initialData: SettingsData }) {
         {activeTab === "commerce" && (
           <div className="grid gap-4 sm:grid-cols-2">
             <FormField label="Tax Mode">
-              <select className={selectClass} value={(commerce.taxMode as string) || "none"} onChange={(e) => updateField("commerce", "taxMode", e.target.value)}>
+              <select className={selectClass} value={(commerce.taxMode as string) || "canadian"} onChange={(e) => updateField("commerce", "taxMode", e.target.value)}>
+                <option value="canadian">Canadian (by province)</option>
                 <option value="none">None</option>
                 <option value="manual">Manual</option>
-                <option value="configured">Configured</option>
+                <option value="configured">Configured flat rate</option>
               </select>
             </FormField>
             <FormField label="Tax Rate (%)">
               <input type="number" step="0.01" className={inputClass} value={(commerce.taxRate as number) || ""} onChange={(e) => updateField("commerce", "taxRate", Number(e.target.value))} />
             </FormField>
+            <FormField label="Origin postal code (shipping from)">
+              <input className={inputClass} value={(commerce.originPostalCode as string) || ""} onChange={(e) => updateField("commerce", "originPostalCode", e.target.value)} placeholder="K1A0B1" />
+            </FormField>
             <label className="flex items-center gap-2 text-sm">
               <input type="checkbox" checked={!!commerce.pickupEnabled} onChange={(e) => updateField("commerce", "pickupEnabled", e.target.checked)} />
               Pickup enabled
             </label>
-            <FormField label="Manual Invoice Instructions" className="sm:col-span-2">
-              <textarea className={textareaClass} rows={3} value={(commerce.manualInvoiceInstructions as string) || ""} onChange={(e) => updateField("commerce", "manualInvoiceInstructions", e.target.value)} />
+            <FormField label="Order confirmation message" className="sm:col-span-2">
+              <textarea className={textareaClass} rows={3} value={(commerce.orderConfirmationCopy as string) || ""} onChange={(e) => updateField("commerce", "orderConfirmationCopy", e.target.value)} />
             </FormField>
             <FormField label="Return Notes" className="sm:col-span-2">
               <textarea className={textareaClass} rows={2} value={(commerce.returnNotes as string) || ""} onChange={(e) => updateField("commerce", "returnNotes", e.target.value)} />

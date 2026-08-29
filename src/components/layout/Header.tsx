@@ -123,43 +123,29 @@ export function Header({ settings }: { settings: HeaderSettings }) {
   const navLinkClass = (isActive: boolean) =>
     cn(
       "px-2 py-2 text-[11px] font-semibold uppercase tracking-[0.12em] transition-colors lg:px-3 lg:text-xs",
-      isHome
-        ? isActive
-          ? "text-cyan"
-          : "text-chrome-light hover:text-pure-paper"
-        : isActive
-          ? "text-royal-blue"
-          : "text-carbon hover:text-royal-blue"
+      isActive ? "text-cyan" : "text-chrome-light hover:text-pure-paper"
     );
 
+  const iconBtnClass = "rounded-sm p-2 text-chrome-light transition-colors hover:text-pure-paper";
+
   return (
-    <div className={cn("min-w-0 overflow-x-clip", isHome ? "fixed inset-x-0 top-0 z-50" : "sticky top-0 z-50")}>
+    <div
+      className={cn(
+        "min-w-0 overflow-x-clip",
+        isHome ? "fixed inset-x-0 top-0 z-50" : "sticky top-0 z-50"
+      )}
+    >
       {showAnnouncement && (
         <div className="bg-ink-black px-4 py-2 text-center text-sm text-pure-paper" role="region" aria-label="Site announcement">
           <Container className="break-words px-0">{settings.announcement}</Container>
         </div>
       )}
 
-      <header
-        className={cn(
-          isHome
-            ? "border-b border-chrome-mid/40 bg-gradient-to-b from-[#1a1a1c]/95 via-[#121214]/90 to-transparent backdrop-blur-sm"
-            : "border-b border-chrome-light/60 bg-pure-paper/95 shadow-sm backdrop-blur-md"
-        )}
-      >
-        {/* Metallic top accent line */}
-        {isHome && (
-          <div className="h-[2px] w-full bg-gradient-to-r from-chrome-mid via-chrome-light to-chrome-mid" aria-hidden="true" />
-        )}
+      <header className="border-b border-chrome-mid/40 bg-gradient-to-b from-[#1a1a1c]/95 via-[#121214]/90 to-[#0a0a0c]/85 backdrop-blur-md">
+        <div className="h-[2px] w-full bg-gradient-to-r from-chrome-mid via-chrome-light to-chrome-mid" aria-hidden="true" />
 
-        <Container className={cn("min-w-0", isHome && "max-w-[1400px]")}>
-          <div
-            className={cn(
-              "flex min-w-0 items-center justify-between gap-2 sm:gap-3",
-              isHome ? "min-h-[64px] py-2 lg:min-h-[72px]" : "h-16 lg:h-[72px]"
-            )}
-          >
-            {/* Logo */}
+        <Container className="min-w-0 max-w-[1400px]">
+          <div className="flex min-w-0 items-center justify-between gap-2 py-2 sm:gap-3 min-h-[64px] lg:min-h-[72px]">
             <div className="flex shrink-0 items-center">
               <Link href="/" className="inline-flex md:hidden" aria-label={`${settings.shortName} home`}>
                 <span className="logo-plaque inline-flex items-center justify-center px-3 py-1.5">
@@ -170,13 +156,12 @@ export function Header({ settings }: { settings: HeaderSettings }) {
                 <Logo
                   src={settings.logoPath}
                   alt={settings.shortName}
-                  variant={isHome ? "headerHome" : "header"}
+                  variant="headerHome"
                   priority
                 />
               </div>
             </div>
 
-            {/* Center nav — desktop */}
             <nav className="hidden flex-1 items-center justify-center xl:flex" aria-label="Main navigation">
               {NAV_LINKS.map((link) => {
                 const isActive = link.href === "/" ? pathname === "/" : pathname.startsWith(link.href);
@@ -188,19 +173,14 @@ export function Header({ settings }: { settings: HeaderSettings }) {
               })}
             </nav>
 
-            {/* Actions */}
             <div className="flex shrink-0 items-center gap-1 sm:gap-2">
-              <Link
-                href="/shop?search="
-                className={cn("rounded-sm p-2 transition-colors", isHome ? "text-chrome-light hover:text-pure-paper" : "btn-ghost")}
-                aria-label="Search products"
-              >
+              <Link href="/shop?search=" className={iconBtnClass} aria-label="Search products">
                 <SearchIcon className="h-5 w-5" />
               </Link>
 
               <Link
                 href="/cart"
-                className={cn("relative rounded-sm p-2 transition-colors", isHome ? "text-chrome-light hover:text-pure-paper" : "btn-ghost")}
+                className={cn(iconBtnClass, "relative")}
                 aria-label={cartCount > 0 ? `Cart, ${cartCount} items` : "Cart"}
               >
                 <CartIcon className="h-5 w-5" />
@@ -216,12 +196,7 @@ export function Header({ settings }: { settings: HeaderSettings }) {
 
               <Link
                 href={settings.ctaUrl}
-                className={cn(
-                  "hidden max-w-[calc(100vw-8rem)] items-center justify-center truncate rounded-sm px-3 py-2 text-[10px] font-bold uppercase tracking-wide transition-all sm:inline-flex sm:max-w-none sm:px-4 sm:py-2.5 sm:text-[11px] lg:px-5 lg:text-xs",
-                  isHome
-                    ? "bg-gradient-to-b from-[#1a7aff] to-royal-blue text-pure-paper shadow-[0_0_20px_rgba(6,94,229,0.45)] hover:brightness-110"
-                    : "btn-primary"
-                )}
+                className="hidden max-w-[calc(100vw-8rem)] items-center justify-center truncate rounded-full bg-gradient-to-r from-cyan via-royal-blue to-magenta px-4 py-2.5 text-[10px] font-bold uppercase tracking-wide text-pure-paper shadow-[0_0_24px_rgba(13,151,252,0.45)] transition-all hover:brightness-110 hover:shadow-[0_0_32px_rgba(222,64,152,0.35)] sm:inline-flex sm:max-w-none sm:px-4 sm:text-[11px] lg:px-5 lg:text-xs"
               >
                 {ctaLabel}
               </Link>
@@ -229,7 +204,7 @@ export function Header({ settings }: { settings: HeaderSettings }) {
               <button
                 ref={menuButtonRef}
                 type="button"
-                className={cn("rounded-sm p-2 xl:hidden", isHome ? "text-chrome-light hover:text-pure-paper" : "btn-ghost")}
+                className={cn(iconBtnClass, "xl:hidden")}
                 aria-expanded={menuOpen}
                 aria-controls={menuId}
                 aria-label={menuOpen ? "Close menu" : "Open menu"}
@@ -241,12 +216,11 @@ export function Header({ settings }: { settings: HeaderSettings }) {
           </div>
         </Container>
 
-        {/* Mobile menu */}
         {menuOpen && (
           <div
             id={menuId}
             ref={mobileMenuRef}
-            className={cn("border-t xl:hidden", isHome ? "border-chrome-mid/40 bg-ink-black/98" : "border-chrome-light/60 bg-pure-paper")}
+            className="border-t border-chrome-mid/40 bg-[#0a0a0c]/98 backdrop-blur-md xl:hidden"
             role="dialog"
             aria-modal="true"
             aria-label="Mobile navigation"
@@ -262,13 +236,7 @@ export function Header({ settings }: { settings: HeaderSettings }) {
                           href={link.href}
                           className={cn(
                             "block rounded-sm px-3 py-3 text-sm font-semibold uppercase tracking-wide transition-colors",
-                            isHome
-                              ? isActive
-                                ? "text-cyan"
-                                : "text-chrome-light hover:text-pure-paper"
-                              : isActive
-                                ? "bg-royal-blue/10 text-royal-blue"
-                                : "text-carbon hover:bg-chrome-light/20"
+                            isActive ? "text-cyan" : "text-chrome-light hover:text-pure-paper"
                           )}
                           aria-current={isActive ? "page" : undefined}
                           onClick={() => setMenuOpen(false)}
@@ -283,7 +251,7 @@ export function Header({ settings }: { settings: HeaderSettings }) {
               <div className="mt-4 border-t border-chrome-mid/30 pt-4">
                 <Link
                   href={settings.ctaUrl}
-                  className="inline-flex w-full items-center justify-center rounded-sm bg-gradient-to-b from-[#1a7aff] to-royal-blue px-5 py-3 text-xs font-bold uppercase tracking-wider text-pure-paper"
+                  className="inline-flex w-full items-center justify-center rounded-full bg-gradient-to-r from-cyan via-royal-blue to-magenta px-5 py-3 text-xs font-bold uppercase tracking-wider text-pure-paper shadow-[0_0_24px_rgba(13,151,252,0.35)]"
                   onClick={() => setMenuOpen(false)}
                 >
                   {ctaLabel}

@@ -26,12 +26,13 @@ const defaultSettings: Partial<ISiteSettings> = {
   },
   social: [{ handle: siteDefaults.socialHandle, isActive: false }],
   commerce: {
-    taxMode: "none",
-    shippingModes: [],
+    taxMode: "canadian",
+    shippingModes: ["canada_post_standard", "canada_post_express"],
     pickupEnabled: false,
     defaultStockBehavior: "track",
-    manualInvoiceInstructions:
-      "We will send you an invoice with final pricing including shipping and taxes before payment is required.",
+    originPostalCode: "K1A0B1",
+    orderConfirmationCopy:
+      "Your order total includes shipping and applicable taxes. We will contact you with payment instructions shortly.",
   },
   customization: {
     acceptedFileTypes: ["image/png", "image/jpeg", "application/pdf"],

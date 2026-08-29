@@ -6,7 +6,7 @@ import { getCachedSettings } from "@/lib/settings";
 
 export const metadata: Metadata = {
   title: "Checkout",
-  description: "Complete your custom print order. Manual invoice flow — pay after we confirm final pricing.",
+  description: "Complete your custom print order with automatic shipping and tax calculation.",
 };
 
 export default async function CheckoutPage() {
@@ -16,11 +16,11 @@ export default async function CheckoutPage() {
     <>
       <PageHero
         title="Checkout"
-        subtitle="Place your order — we will send a manual invoice with final pricing before payment is required."
+        subtitle="Enter your address to see Canada Post shipping options and taxes — your total is calculated before you place your order."
       />
       <section className="py-12">
         <Container>
-          <CheckoutForm manualInvoiceInstructions={settings.commerce?.manualInvoiceInstructions} />
+          <CheckoutForm pickupEnabled={settings.commerce?.pickupEnabled} />
         </Container>
       </section>
     </>

@@ -37,6 +37,9 @@ export default async function OrderSuccessPage({ searchParams }: Props) {
   }
 
   const settings = await getCachedSettings();
+  const confirmationCopy =
+    settings.commerce?.orderConfirmationCopy ||
+    "Your order total includes shipping and applicable taxes. We will contact you with payment instructions shortly.";
 
   return (
     <section className="py-20">
@@ -52,18 +55,30 @@ export default async function OrderSuccessPage({ searchParams }: Props) {
         <div className="mt-8 rounded-sm border border-chrome-light/60 bg-chrome-light/5 p-6 text-left text-sm">
           <p className="flex justify-between">
             <span>Subtotal</span>
-            <span className="font-semibold">{formatCurrency(order.subtotal, order.currency)}</span>
+            <span>{formatCurrency(order.subtotal, order.currency)}</span>
           </p>
           <p className="mt-2 flex justify-between text-chrome-mid">
+            <span>Shipping</span>
+            <span>{formatCurrency(order.shippingCost, order.currency)}</span>
+          </p>
+          {order.shipping?.method && (
+            <p className="mt-1 text-xs text-chrome-mid">{order.shipping.method}</p>
+          )}
+          <p className="mt-2 flex justify-between text-chrome-mid">
+            <span>Tax</span>
+            <span>{formatCurrency(order.tax, order.currency)}</span>
+          </p>
+          <p className="mt-3 flex justify-between border-t border-chrome-light/60 pt-3 font-semibold">
+            <span>Total</span>
+            <span>{formatCurrency(order.total, order.currency)}</span>
+          </p>
+          <p className="mt-3 flex justify-between text-chrome-mid">
             <span>Payment status</span>
             <span className="capitalize">{order.paymentStatus.replace(/_/g, " ")}</span>
           </p>
         </div>
 
-        <p className="mt-6 text-sm text-carbon">
-          {settings.commerce?.manualInvoiceInstructions ||
-            "We will send you an invoice with final pricing including shipping and taxes before payment is required."}
-        </p>
+        <p className="mt-6 text-sm text-carbon">{confirmationCopy}</p>
 
         <p className="mt-4 text-xs text-chrome-mid">
           A confirmation email has been sent to {order.customer.email}. Save this link to track your order.

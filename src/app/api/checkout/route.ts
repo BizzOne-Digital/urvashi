@@ -8,8 +8,10 @@ import { generateOrderNumber } from "@/lib/utils";
 import { getSettings } from "@/lib/settings";
 import { sendEmail } from "@/lib/email";
 import { createStripeCheckoutSession, isStripeConfigured } from "@/lib/stripe";
+import { calculateOrderTotals } from "@/lib/order-totals";
 import Order from "@/models/Order";
 import CustomerArtwork from "@/models/CustomerArtwork";
+import Product from "@/models/Product";
 
 const checkoutSchema = z.object({
   customer: z.object({
@@ -101,19 +103,53 @@ export async function POST(request: NextRequest) {
     }
 
     const settings = await getSettings();
-    const subtotal = cart.fixedSubtotal;
-    let tax = 0;
+    const shippingMethod = data.shipping?.method;
+    const isPickup = shippingMethod === "pickup";
 
-    if (settings.commerce.taxMode === "configured" && settings.commerce.taxRate) {
-      tax = Math.round(subtotal * settings.commerce.taxRate * 100) / 100;
+    if (!isPickup) {
+      if (!data.shipping?.address1?.trim()) {
+        return NextResponse.json({ error: "Shipping address is required" }, { status: 400 });
+      }
+      if (!data.shipping?.postalCode?.trim() || data.shipping.postalCode.replace(/\s/g, "").length < 6) {
+        return NextResponse.json({ error: "Valid postal code is required" }, { status: 400 });
+      }
+      if (!data.shipping?.province?.trim()) {
+        return NextResponse.json({ error: "Province is required for tax calculation" }, { status: 400 });
+      }
+      if (!shippingMethod) {
+        return NextResponse.json({ error: "Please select a shipping method" }, { status: 400 });
+      }
     }
 
-    const shippingCost = 0;
-    const total = subtotal + tax + shippingCost;
+    await connectDB();
+
+    const productIds = [...new Set(fixedItems.map((i) => i.productId))];
+    const products = await Product.find({ _id: { $in: productIds } });
+    const productMap = new Map(products.map((p) => [p._id.toString(), p]));
+
+    const totals = await calculateOrderTotals({
+      subtotal: cart.fixedSubtotal,
+      currency: cart.currency,
+      items: fixedItems,
+      productMap,
+      settings,
+      shipping: {
+        postalCode: data.shipping?.postalCode,
+        province: data.shipping?.province,
+        method: shippingMethod,
+      },
+    });
+
+    const { subtotal, tax, shippingCost, total } = totals;
     const orderNumber = generateOrderNumber();
     const accessToken = uuidv4();
 
-    await connectDB();
+    const shippingRecord = data.shipping
+      ? {
+          ...data.shipping,
+          method: totals.shippingMethodLabel || data.shipping.method,
+        }
+      : undefined;
 
     const orderItems = fixedItems.map((item) => ({
       productId: item.productId,
@@ -139,7 +175,7 @@ export async function POST(request: NextRequest) {
         lastName: data.customer.lastName,
         phone: data.customer.phone,
       },
-      shipping: data.shipping,
+      shipping: shippingRecord,
       billing: data.billing,
       items: orderItems,
       subtotal,
@@ -185,6 +221,10 @@ export async function POST(request: NextRequest) {
     const notifyEmail =
       process.env.ORDER_NOTIFICATION_EMAIL || settings.contact.email;
 
+    const confirmationCopy =
+      settings.commerce?.orderConfirmationCopy ||
+      "Your order total includes shipping and applicable taxes. We will contact you with payment instructions shortly.";
+
     await sendEmail({
       to: notifyEmail,
       subject: `New order: ${orderNumber}`,
@@ -192,6 +232,9 @@ export async function POST(request: NextRequest) {
         `Order: ${orderNumber}`,
         `Customer: ${data.customer.firstName} ${data.customer.lastName}`,
         `Email: ${data.customer.email}`,
+        `Subtotal: ${subtotal} ${cart.currency}`,
+        `Shipping: ${shippingCost} ${cart.currency}`,
+        `Tax: ${tax} ${cart.currency}`,
         `Total: ${total} ${cart.currency}`,
         `Payment: ${order.paymentMethod}`,
         `View: ${orderUrl}`,
@@ -205,8 +248,10 @@ export async function POST(request: NextRequest) {
         `Thank you for your order, ${data.customer.firstName}!`,
         `Order number: ${orderNumber}`,
         `Subtotal: ${subtotal} ${cart.currency}`,
-        settings.commerce.manualInvoiceInstructions ||
-          "We will send you an invoice with final pricing before payment is required.",
+        `Shipping: ${shippingCost} ${cart.currency}`,
+        `Tax: ${tax} ${cart.currency}`,
+        `Total: ${total} ${cart.currency}`,
+        confirmationCopy,
         `Track your order: ${orderUrl}`,
       ].join("\n\n"),
     });
@@ -239,16 +284,19 @@ export async function POST(request: NextRequest) {
       accessToken,
       orderUrl,
       paymentMethod: order.paymentMethod,
-      manualInvoiceInstructions:
-        order.paymentMethod === "manual_invoice"
-          ? settings.commerce.manualInvoiceInstructions
-          : undefined,
       stripeUrl,
+      subtotal,
+      shippingCost,
+      tax,
       total,
       currency: cart.currency,
     });
   } catch (error) {
     console.error("Checkout POST error:", error);
-    return NextResponse.json({ error: "Failed to process checkout" }, { status: 500 });
+    const message =
+      error instanceof Error && error.message.includes("shipping")
+        ? error.message
+        : "Failed to process checkout";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

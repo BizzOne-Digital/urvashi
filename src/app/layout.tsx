@@ -26,6 +26,10 @@ export async function generateMetadata(): Promise<Metadata> {
       settings.general?.defaultSeoDescription ||
       "Custom printing on everyday items, meaningful gifts, apparel, drinkware, keepsakes, and more.",
     metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"),
+    icons: {
+      icon: [{ url: "/brand/dpm-logo.png", type: "image/png" }],
+      apple: [{ url: "/brand/dpm-logo.png", type: "image/png" }],
+    },
   };
 }
 
@@ -34,7 +38,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const introEnabled = settings.motion?.introEnabled !== false;
 
   return (
-    <html lang="en" className={inter.variable}>
+    <html lang="en" className={inter.variable} suppressHydrationWarning>
       <head>
         {introEnabled ? (
           <script

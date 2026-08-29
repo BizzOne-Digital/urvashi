@@ -68,6 +68,11 @@ export interface IProduct extends Document {
   relatedProductIds: mongoose.Types.ObjectId[];
   relatedGalleryIds: mongoose.Types.ObjectId[];
   seo: { title?: string; description?: string };
+  /** Parcel weight in grams for shipping rate quotes */
+  weightGrams?: number;
+  lengthCm?: number;
+  widthCm?: number;
+  heightCm?: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -146,6 +151,10 @@ const ProductSchema = new Schema<IProduct>(
     relatedProductIds: [{ type: Schema.Types.ObjectId, ref: "Product" }],
     relatedGalleryIds: [{ type: Schema.Types.ObjectId, ref: "MediaAsset" }],
     seo: { title: String, description: String },
+    weightGrams: Number,
+    lengthCm: Number,
+    widthCm: Number,
+    heightCm: Number,
   },
   { timestamps: true }
 );

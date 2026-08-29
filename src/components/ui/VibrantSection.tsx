@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils";
 import type { HTMLAttributes } from "react";
 
-type VibrantVariant = "light" | "dark" | "gradient" | "mesh";
+type VibrantVariant = "light" | "dark" | "gradient" | "mesh" | "aurora" | "cosmic" | "neon";
 
 interface VibrantSectionProps extends HTMLAttributes<HTMLElement> {
   variant?: VibrantVariant;
@@ -10,14 +10,17 @@ interface VibrantSectionProps extends HTMLAttributes<HTMLElement> {
 }
 
 const variantClasses: Record<VibrantVariant, string> = {
-  light: "page-section-light",
+  light: "page-section-cosmic",
   dark: "page-section-dark",
   gradient: "page-section-gradient",
   mesh: "page-section-mesh",
+  aurora: "page-section-aurora",
+  cosmic: "page-section-cosmic",
+  neon: "page-section-neon",
 };
 
 export function VibrantSection({
-  variant = "light",
+  variant = "cosmic",
   reveal = true,
   revealDelay,
   className,

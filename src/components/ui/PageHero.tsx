@@ -69,7 +69,7 @@ export function PageHero({
         <h1
           className={cn(
             "heading-display text-balance max-w-4xl",
-            dark ? "text-pure-paper" : "gradient-heading"
+            dark ? "gradient-heading-light" : "gradient-heading"
           )}
           data-reveal
           data-reveal-delay="0.1"
