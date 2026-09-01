@@ -83,11 +83,12 @@ export function ProductDetailExperience({ product }: ProductDetailExperienceProp
     }
   };
 
-  const fieldClass = "rounded-sm border border-chrome-light bg-pure-paper px-3 py-2 text-sm";
+  const fieldClass =
+    "rounded-sm border border-white/15 bg-[#12141c] px-3 py-2 text-sm text-pure-paper focus:border-cyan/50 focus:outline-none focus:ring-2 focus:ring-cyan/25";
 
   return (
     <div className="grid gap-10 lg:grid-cols-2 lg:gap-12">
-      <div className="relative aspect-square overflow-hidden rounded-sm border border-chrome-light/40 bg-gradient-to-br from-chrome-light/20 to-pure-paper">
+      <div className="relative aspect-square overflow-hidden rounded-xl border border-white/10 bg-[#0a0c14]">
         {activeImage ? (
           <Image
             src={resolveImageSrc(activeImage.url)}
@@ -104,21 +105,23 @@ export function ProductDetailExperience({ product }: ProductDetailExperienceProp
 
       <div className="space-y-5">
         {product.categorySlug && (
-          <p className="text-xs font-semibold uppercase tracking-wider text-chrome-mid">
+          <p className="text-xs font-semibold uppercase tracking-wider text-cyan">
             {product.categorySlug.replace(/-/g, " ")}
           </p>
         )}
-        <h1 className="heading-section">{product.name}</h1>
+        <h1 className="heading-section text-pure-paper">{product.name}</h1>
 
         {(allowsBlank || allowsCustom) && (
-          <div className="flex rounded-sm border border-chrome-light/40 bg-white p-1">
+          <div className="flex rounded-sm border border-white/15 bg-white/[0.04] p-1">
             {allowsBlank && (
               <button
                 type="button"
                 onClick={() => setMode("blank")}
                 className={cn(
                   "flex-1 rounded-sm px-4 py-2.5 text-sm font-semibold transition-all",
-                  mode === "blank" ? "bg-royal-blue text-pure-paper shadow" : "text-carbon hover:bg-carbon/5"
+                  mode === "blank"
+                    ? "bg-gradient-to-r from-cyan to-royal-blue text-pure-paper shadow"
+                    : "text-chrome-light hover:bg-white/5 hover:text-pure-paper"
                 )}
               >
                 Blank
@@ -130,7 +133,9 @@ export function ProductDetailExperience({ product }: ProductDetailExperienceProp
                 onClick={() => setMode("customized")}
                 className={cn(
                   "flex-1 rounded-sm px-4 py-2.5 text-sm font-semibold transition-all",
-                  mode === "customized" ? "bg-royal-blue text-pure-paper shadow" : "text-carbon hover:bg-carbon/5"
+                  mode === "customized"
+                    ? "bg-gradient-to-r from-cyan to-royal-blue text-pure-paper shadow"
+                    : "text-chrome-light hover:bg-white/5 hover:text-pure-paper"
                 )}
               >
                 Customized
@@ -139,17 +144,19 @@ export function ProductDetailExperience({ product }: ProductDetailExperienceProp
           </div>
         )}
 
-        <p className="text-2xl font-bold text-royal-blue">{display}</p>
+        <p className="text-2xl font-bold text-cyan">{display}</p>
 
-        {product.shortDescription && <p className="text-carbon">{product.shortDescription}</p>}
+        {product.shortDescription && (
+          <p className="text-chrome-light leading-relaxed">{product.shortDescription}</p>
+        )}
 
         {mode === "blank" && allowsBlank && (
-          <div className="space-y-4 border-t border-chrome-light/40 pt-5">
-            <p className="text-sm text-carbon">
+          <div className="space-y-4 border-t border-white/10 pt-5">
+            <p className="text-sm text-chrome-light">
               Purchase a blank {product.name.toLowerCase()} ready for your own use or decoration.
             </p>
             <div>
-              <label htmlFor="quantity" className="mb-1 block text-sm font-medium">
+              <label htmlFor="quantity" className="mb-1 block text-sm font-medium text-pure-paper">
                 Quantity
               </label>
               <input
@@ -172,10 +179,13 @@ export function ProductDetailExperience({ product }: ProductDetailExperienceProp
         )}
 
         {mode === "customized" && allowsCustom && (
-          <div className="space-y-4 border-t border-chrome-light/40 pt-5">
-            <p className="text-sm text-carbon">
+          <div className="space-y-4 border-t border-white/10 pt-5">
+            <p className="text-sm text-chrome-light">
               Upload your artwork and we will customize this product for you. Starting at{" "}
-              {formatCurrency(customBase, product.currency)} with your own design.
+              <span className="font-semibold text-pure-paper">
+                {formatCurrency(customBase, product.currency)}
+              </span>{" "}
+              with your own design.
             </p>
             <p className="text-sm text-chrome-mid">
               Optional design help from our team: +{formatCurrency(designFee, product.currency)} (we send 3–4 design

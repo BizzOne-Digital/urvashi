@@ -34,14 +34,14 @@ export default async function ProductDetailPage({ params }: Props) {
 
   return (
     <>
-      <section className="border-b border-chrome-light/40 py-12 lg:py-16">
+      <section className="border-b border-white/10 bg-[#050508] py-12 lg:py-16">
         <Container>
           <nav className="mb-8 text-sm text-chrome-mid">
-            <Link href="/shop" className="hover:text-royal-blue">
+            <Link href="/shop" className="hover:text-cyan">
               Shop
             </Link>
             <span className="mx-2">/</span>
-            <span className="text-ink-black">{product.name}</span>
+            <span className="text-chrome-light">{product.name}</span>
           </nav>
 
           <ProductDetailExperience
@@ -70,7 +70,7 @@ export default async function ProductDetailPage({ params }: Props) {
       </section>
 
       {product.longDescription && (
-        <section className="py-16">
+        <section className="border-t border-white/10 bg-[#0a0c14] py-16">
           <Container className="max-w-3xl prose-dpm">
             <h2>Details</h2>
             <p>{product.longDescription}</p>
@@ -78,7 +78,7 @@ export default async function ProductDetailPage({ params }: Props) {
         </section>
       )}
 
-      <section className="border-t border-chrome-light/40 py-12">
+      <section className="border-t border-white/10 bg-[#050508] py-12">
         <Container>
           <Link href="/shop" className={buttonVariants("secondary")}>
             ← Back to shop
