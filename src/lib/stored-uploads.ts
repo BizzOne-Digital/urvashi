@@ -20,6 +20,7 @@ export const ADMIN_UPLOAD_MIME_TYPES = new Set([
 export const ARTWORK_MIME_TYPES = new Set([
   "image/jpeg",
   "image/png",
+  "image/webp",
   "application/pdf",
 ]);
 

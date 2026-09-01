@@ -5,72 +5,60 @@ import { VibrantSection } from "@/components/ui/VibrantSection";
 import { HighlightStrip } from "@/components/ui/HighlightStrip";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { PageCtaBanner } from "@/components/ui/PageCtaBanner";
-import { CustomizerStudio } from "@/components/customize/CustomizerStudio";
+import { CustomizeUploadForm } from "@/components/customize/CustomizeUploadForm";
 import { getCachedSettings } from "@/lib/settings";
-import { getCustomizerProducts } from "@/lib/public-data";
 
 export const metadata: Metadata = {
   title: "Customize",
-  description: "Design your custom print with text, colours, fonts, and artwork upload.",
+  description: "Upload your picture and details — we'll contact you about your custom print order.",
 };
 
-const CUSTOMIZE_FEATURES = [
-  { title: "Live preview", desc: "See text and artwork on the product before you order." },
-  { title: "Colour & font", desc: "Pick from brand colours and font styles on supported items." },
-  { title: "Artwork upload", desc: "Add PNG, JPEG, or PDF files where customization is enabled." },
-  { title: "Add to cart", desc: "Confirmed-price items can go straight to checkout." },
-];
-
 export default async function CustomizePage() {
-  const [settings, products] = await Promise.all([getCachedSettings(), getCustomizerProducts()]);
+  const settings = await getCachedSettings();
 
   return (
     <>
       <PageHero
-        eyebrow="Design studio"
-        title="Customize your print"
-        subtitle="Select a product, add your text and artwork, and preview before you order."
+        eyebrow="Custom orders"
+        title="Send us your design"
+        subtitle="Upload your picture, add your name, email, and phone — we'll review it and get back to you with pricing and next steps."
         image="/home/customizer-preview.jpg"
       />
 
       <HighlightStrip />
 
-      <VibrantSection variant="cosmic" className="!py-12">
-        <Container>
-          <SectionHeader
-            align="center"
-            eyebrow="Studio features"
-            title="Design it your way"
-            subtitle="Everything you need to personalize mugs, tumblers, pens, and more."
-          />
-          <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4" data-reveal-stagger>
-            {CUSTOMIZE_FEATURES.map((feature) => (
-              <div key={feature.title} className="card-vibrant p-5 text-center" data-reveal-item>
-                <p className="font-display text-lg font-semibold text-cyan">{feature.title}</p>
-                <p className="mt-2 text-sm text-chrome-light">{feature.desc}</p>
-              </div>
-            ))}
-          </div>
-        </Container>
-      </VibrantSection>
-
       <VibrantSection variant="mesh" reveal={false}>
-        <Container className="max-w-6xl py-4 sm:py-8">
-          <CustomizerStudio
-            products={products.map((p) => ({ ...p, _id: String(p._id) }))}
-            previewDisclaimer={settings.customization?.previewDisclaimer}
-            rightsConfirmationCopy={settings.customization?.rightsConfirmationCopy}
+        <Container className="max-w-2xl">
+          <SectionHeader
+            eyebrow="Quick request"
+            title="Upload & submit"
+            subtitle="No product picker needed. Share your artwork and contact details and our team will follow up by email or phone."
+            className="mb-8"
           />
+
+          <div className="rounded-xl border border-white/10 bg-[#050508] p-5 shadow-[0_0_40px_rgba(6,94,229,0.12)] sm:p-8">
+            <CustomizeUploadForm
+              rightsConfirmationCopy={settings.customization?.rightsConfirmationCopy}
+            />
+          </div>
+
+          <p className="mt-6 text-center text-sm text-chrome-mid">
+            Prefer to browse products first?{" "}
+            <a href="/shop" className="font-semibold text-cyan hover:underline">Visit the shop</a>
+            {" "}or{" "}
+            <a href="/contact" className="font-semibold text-cyan hover:underline">contact us</a>
+            {" "}for questions.
+          </p>
         </Container>
       </VibrantSection>
 
       <PageCtaBanner
-        title="Happy with your preview?"
-        description="Add to cart or contact us for bulk and quote-only items."
-        primaryHref="/cart"
-        primaryLabel="View cart"
-        secondaryHref="/contact"
-        secondaryLabel="Request a quote"
+        title="Need a quote for bulk or apparel?"
+        description="We can help with mugs, tumblers, pens, gifts, and larger custom runs."
+        primaryHref="/contact"
+        primaryLabel="Contact us"
+        secondaryHref="/pricing"
+        secondaryLabel="View pricing"
       />
     </>
   );
