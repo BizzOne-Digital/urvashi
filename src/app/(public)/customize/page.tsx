@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { PageHero } from "@/components/ui/PageHero";
 import { Container } from "@/components/ui/Container";
 import { VibrantSection } from "@/components/ui/VibrantSection";
@@ -44,9 +45,9 @@ export default async function CustomizePage() {
 
           <p className="mt-6 text-center text-sm text-chrome-mid">
             Prefer to browse products first?{" "}
-            <a href="/shop" className="font-semibold text-cyan hover:underline">Visit the shop</a>
+            <Link href="/shop" className="font-semibold text-cyan hover:underline">Visit the shop</Link>
             {" "}or{" "}
-            <a href="/contact" className="font-semibold text-cyan hover:underline">contact us</a>
+            <Link href="/contact" className="font-semibold text-cyan hover:underline">contact us</Link>
             {" "}for questions.
           </p>
         </Container>
