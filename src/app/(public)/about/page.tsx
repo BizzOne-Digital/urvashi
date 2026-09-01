@@ -4,9 +4,11 @@ import Link from "next/link";
 import { CmsPageHero } from "@/components/cms/CmsPageHero";
 import { Container } from "@/components/ui/Container";
 import { VibrantSection } from "@/components/ui/VibrantSection";
-import { DpmProductImage } from "@/components/ui/DpmProductImage";
+import { HighlightStrip } from "@/components/ui/HighlightStrip";
+import { StatsBar } from "@/components/ui/StatsBar";
+import { SectionHeader } from "@/components/ui/SectionHeader";
 import { buttonVariants } from "@/components/ui/Button";
-import { getPublishedPageBySlug, DEMO_IMAGES } from "@/lib/public-data";
+import { getPublishedPageBySlug } from "@/lib/public-data";
 import { cmsBody, getPageSection, pageMetadata, sectionItems, sectionText } from "@/lib/page-content";
 import { siteDefaults } from "@/lib/brand";
 import { cn } from "@/lib/utils";
@@ -19,10 +21,38 @@ export async function generateMetadata(): Promise<Metadata> {
   });
 }
 
+/** Before/after product card images for the about page showcase */
+const ABOUT_SHOWCASE = [
+  { src: "/products/tumblers/card.png", alt: "Tumblers blank and customized" },
+  { src: "/products/sublimation-mug/card.png", alt: "Sublimation mug blank and customized" },
+  { src: "/products/keychains/card.png", alt: "Keychains blank and customized" },
+  { src: "/products/glass-tumblers/card.png", alt: "Glass tumblers blank and customized" },
+  { src: "/products/sublimation-pens/card.png", alt: "Sublimation pens blank and customized" },
+  { src: "/products/sublimation-keychains/card.png", alt: "Sublimation keychains blank and customized" },
+] as const;
+
+function resolveShowcaseImage(img?: string, fallback: string = "/products/tumblers/card.png"): string {
+  if (!img) return fallback;
+  if (img.startsWith("/demo/") || img.endsWith(".svg")) return fallback;
+  return img;
+}
+
 const defaultPhilosophy = [
-  { title: "Your vision first", desc: "We start with your idea — artwork, text, or branding — and help shape it for print.", img: "/demo/tshirt.svg" },
-  { title: "Ink lab precision", desc: "CMYK colour workflow and careful placement on every product we print.", img: "/demo/ink-lab.svg" },
-  { title: "Honest partnership", desc: "Clear pricing where available, and transparent quotes when custom work is needed.", img: "/demo/mug-white.svg" },
+  {
+    title: "Your vision first",
+    desc: "We start with your idea — artwork, text, or branding — and help shape it for print.",
+    img: "/products/tumblers/card.png",
+  },
+  {
+    title: "Ink lab precision",
+    desc: "CMYK colour workflow and careful placement on every product we print.",
+    img: "/products/sublimation-mug/card.png",
+  },
+  {
+    title: "Honest partnership",
+    desc: "Clear pricing where available, and transparent quotes when custom work is needed.",
+    img: "/products/sublimation-pens/card.png",
+  },
 ];
 
 export default async function AboutPage() {
@@ -33,10 +63,13 @@ export default async function AboutPage() {
   const cta = getPageSection(page, "cta");
   const philosophyCards = sectionItems(philosophy);
   const cards = philosophyCards.length
-    ? philosophyCards.map((item) => ({
+    ? philosophyCards.map((item, index) => ({
         title: String(item.title || ""),
         desc: String(item.desc || item.description || ""),
-        img: String(item.img || item.image || "/demo/ink-lab.svg"),
+        img: resolveShowcaseImage(
+          String(item.img || item.image || ""),
+          defaultPhilosophy[index % defaultPhilosophy.length].img
+        ),
       }))
     : defaultPhilosophy;
 
@@ -52,27 +85,45 @@ export default async function AboutPage() {
           eyebrow: "Our story",
           title: "Ideas deserve to become something you can hold.",
           subtitle: siteDefaults.tagline,
-          image: "/demo/ink-lab.svg",
+          image: "/products/tumblers/card.png",
         }}
       />
 
+      <HighlightStrip />
+
+      <VibrantSection variant="cosmic" className="!py-12">
+        <Container>
+          <StatsBar />
+        </Container>
+      </VibrantSection>
+
       <VibrantSection variant="mesh">
         <Container className="grid min-w-0 items-center gap-12 lg:grid-cols-2">
-          <div>
-            <p className="gradient-eyebrow text-xs font-bold uppercase tracking-[0.2em]">About us</p>
-            <h2 className="heading-section mt-3 gradient-heading">
-              {sectionText(story, "heading", "About DPM Custom Prints")}
-            </h2>
+          <div className="min-w-0">
+            <SectionHeader
+              eyebrow="About us"
+              title={sectionText(story, "heading", "About DPM Custom Prints")}
+            />
             {storyBody.split("\n\n").map((paragraph) => (
-              <p key={paragraph.slice(0, 24)} className="mt-4 leading-relaxed text-carbon">
+              <p key={paragraph.slice(0, 24)} className="mt-4 leading-relaxed text-chrome-light">
                 {paragraph}
               </p>
             ))}
           </div>
-          <div className="grid grid-cols-2 gap-4" data-reveal-stagger>
-            {DEMO_IMAGES.slice(0, 6).map((src) => (
-              <div key={src} className="card-vibrant relative aspect-square overflow-hidden" data-reveal-item>
-                <DpmProductImage src={src} alt="About DPM sample print" fill showDpmMark markSize="sm" imageClassName="object-contain p-4" sizes="25vw" />
+          <div className="grid grid-cols-2 gap-3 sm:gap-4" data-reveal-stagger>
+            {ABOUT_SHOWCASE.map((item) => (
+              <div
+                key={item.src}
+                className="card-vibrant relative aspect-square overflow-hidden"
+                data-reveal-item
+              >
+                <Image
+                  src={item.src}
+                  alt={item.alt}
+                  fill
+                  className="object-cover transition-transform duration-500 hover:scale-105"
+                  sizes="(max-width: 640px) 50vw, 25vw"
+                />
               </div>
             ))}
           </div>
@@ -81,15 +132,26 @@ export default async function AboutPage() {
 
       <VibrantSection variant="dark">
         <Container>
-          <h2 className="heading-section">{sectionText(philosophy, "heading", "Creative philosophy")}</h2>
+          <SectionHeader
+            title={sectionText(philosophy, "heading", "Creative philosophy")}
+            subtitle="How we approach every custom print — from one mug to a full promotional run."
+          />
           <div className="mt-10 grid gap-8 md:grid-cols-3" data-reveal-stagger>
             {cards.map((item) => (
-              <div key={item.title} className="card-vibrant-dark p-6" data-reveal-item>
-                <div className="relative mb-4 aspect-video overflow-hidden rounded-sm bg-carbon">
-                  <DpmProductImage src={item.img} alt={item.title} fill showDpmMark markSize="md" imageClassName="object-contain p-4" sizes="33vw" />
+              <div key={item.title} className="card-vibrant-dark overflow-hidden" data-reveal-item>
+                <div className="relative aspect-[4/3] overflow-hidden border-b border-white/10 bg-[#0a0c14]">
+                  <Image
+                    src={item.img}
+                    alt={`${item.title} — blank and customized`}
+                    fill
+                    className="object-cover"
+                    sizes="(max-width: 768px) 100vw, 33vw"
+                  />
                 </div>
-                <h3 className="font-display text-xl font-semibold text-cyan">{item.title}</h3>
-                <p className="mt-2 text-sm text-chrome-light">{item.desc}</p>
+                <div className="p-6">
+                  <h3 className="font-display text-xl font-semibold text-cyan">{item.title}</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-chrome-light">{item.desc}</p>
+                </div>
               </div>
             ))}
           </div>
@@ -98,7 +160,9 @@ export default async function AboutPage() {
 
       <VibrantSection variant="gradient">
         <Container className="text-center">
-          <h2 className="heading-section">{sectionText(cta, "heading", "Ready to print?")}</h2>
+          <h2 className="heading-section gradient-heading-light">
+            {sectionText(cta, "heading", "Ready to print?")}
+          </h2>
           <p className="mx-auto mt-4 max-w-xl text-chrome-light">
             {sectionText(cta, "body", "Browse our shop, open the customizer, or reach out for a consultation.")}
           </p>
@@ -106,7 +170,7 @@ export default async function AboutPage() {
             <Link href={sectionText(cta, "ctaUrl", "/shop") || "/shop"} className={buttonVariants("primary")}>
               {sectionText(cta, "ctaText", "Shop products")}
             </Link>
-            <Link href="/contact" className={cn(buttonVariants("secondary"), "border-pure-paper text-pure-paper hover:bg-pure-paper hover:text-ink-black")}>
+            <Link href="/contact" className={cn(buttonVariants("secondary"))}>
               Contact us
             </Link>
           </div>

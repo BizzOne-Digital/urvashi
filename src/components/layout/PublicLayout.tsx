@@ -1,5 +1,7 @@
 import { getCachedSettings } from "@/lib/settings";
 import { siteDefaults } from "@/lib/brand";
+import { buildMarqueeItems } from "@/lib/promo";
+import { getPromoMarqueeProducts } from "@/lib/public-data";
 import { Header, type HeaderSettings } from "@/components/layout/Header";
 import { Footer, type FooterSettings } from "@/components/layout/Footer";
 
@@ -35,12 +37,23 @@ function buildFooterSettings(settings: Awaited<ReturnType<typeof getCachedSettin
 
 export async function PublicLayout({ children }: { children: React.ReactNode }) {
   const settings = await getCachedSettings();
+  const promoProducts = await getPromoMarqueeProducts();
+  const marqueeItems = buildMarqueeItems(
+    promoProducts.map((p) => ({
+      _id: String(p._id),
+      name: p.name,
+      slug: p.slug,
+      onSale: p.onSale,
+      featured: p.featured,
+      createdAt: p.createdAt ? String(p.createdAt) : undefined,
+    }))
+  );
   const headerSettings = buildHeaderSettings(settings);
   const footerSettings = buildFooterSettings(settings);
 
   return (
     <>
-      <Header settings={headerSettings} />
+      <Header settings={headerSettings} marqueeItems={marqueeItems} />
       <main id="main-content" className="flex-1 min-w-0 overflow-x-clip">
         {children}
       </main>

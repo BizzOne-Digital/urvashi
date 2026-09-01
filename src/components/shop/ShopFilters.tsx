@@ -29,7 +29,8 @@ export function ShopFilters({ categories, currentCategory, currentSearch, curren
     [router, searchParams]
   );
 
-  const fieldClass = "rounded-sm border border-chrome-light bg-pure-paper px-3 py-2 text-sm";
+  const fieldClass =
+    "w-full rounded-sm border border-white/15 bg-white/5 px-3 py-2 text-sm text-pure-paper placeholder:text-chrome-mid focus:border-cyan/50 focus:outline-none focus:ring-1 focus:ring-cyan/30";
 
   return (
     <div className={cn("flex min-w-0 flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end", className)}>

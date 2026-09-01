@@ -4,7 +4,7 @@ import Product from "@/models/Product";
 import { loadCalculatedCart } from "@/lib/cart";
 import { connectDB } from "@/lib/db";
 import { getSettings } from "@/lib/settings";
-import { getOriginPostalCode, getShippingRates } from "@/lib/canada-post";
+import { getOriginPostalCode, getShippingRates, isCanadaPostApiEnabled } from "@/lib/canada-post";
 import { calculateParcelFromCart } from "@/lib/shipping-parcel";
 import { calculateOrderTax } from "@/lib/order-totals";
 
@@ -75,9 +75,7 @@ export async function POST(request: NextRequest) {
         weightKg: parcel.weightKg,
         dimensions: `${parcel.lengthCm}×${parcel.widthCm}×${parcel.heightCm} cm`,
       },
-      usingCanadaPostApi: Boolean(
-        process.env.CANADA_POST_USERNAME && process.env.CANADA_POST_PASSWORD
-      ),
+      usingCanadaPostApi: isCanadaPostApiEnabled(),
     });
   } catch (error) {
     console.error("Shipping rates error:", error);

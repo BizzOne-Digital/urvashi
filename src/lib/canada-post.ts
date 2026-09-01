@@ -38,12 +38,19 @@ function normalizePostal(postal?: string): string {
   return (postal || "").replace(/\s+/g, "").toUpperCase();
 }
 
+function getCanadaPostCredentials() {
+  const username =
+    process.env.CANADA_POST_USERNAME?.trim() || process.env.CANADA_POST_API_KEY?.trim();
+  const password =
+    process.env.CANADA_POST_PASSWORD?.trim() || process.env.CANADA_POST_API_SECRET?.trim();
+  const customerNumber = process.env.CANADA_POST_CUSTOMER_NUMBER?.trim();
+
+  return { username, password, customerNumber };
+}
+
 function isCanadaPostConfigured(): boolean {
-  return Boolean(
-    process.env.CANADA_POST_USERNAME &&
-      process.env.CANADA_POST_PASSWORD &&
-      process.env.COMMERCE_ORIGIN_POSTAL_CODE
-  );
+  const { username, password } = getCanadaPostCredentials();
+  return Boolean(username && password && process.env.COMMERCE_ORIGIN_POSTAL_CODE);
 }
 
 function parsePriceQuotes(xml: string, serviceCodes: string[]): Map<string, number> {
@@ -65,17 +72,22 @@ async function fetchCanadaPostRates(
   parcel: ParcelSpec,
   serviceCodes: string[]
 ): Promise<Map<string, number>> {
-  const username = process.env.CANADA_POST_USERNAME!;
-  const password = process.env.CANADA_POST_PASSWORD!;
+  const { username, password, customerNumber } = getCanadaPostCredentials();
+  if (!username || !password) throw new Error("Canada Post credentials missing");
+
   const isProd = process.env.CANADA_POST_USE_PRODUCTION === "true";
   const base = isProd
     ? "https://soa-gw.canadapost.ca"
     : "https://ct.soa-gw.canadapost.ca";
 
   const serviceXml = serviceCodes.map((c) => `<service-code>${c}</service-code>`).join("");
+  const customerXml = customerNumber
+    ? `<customer-number>${customerNumber}</customer-number>`
+    : "";
 
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <mailing-scenario xmlns="http://www.canadapost.ca/ws/shipment-v8">
+  ${customerXml}
   <origin-postal-code>${normalizePostal(originPostal)}</origin-postal-code>
   <destination>
     <domestic>
@@ -216,6 +228,10 @@ export function getShippingCostForMethod(
 ): number | null {
   const quote = quotes.find((q) => q.id === methodId);
   return quote ? quote.price : null;
+}
+
+export function isCanadaPostApiEnabled(): boolean {
+  return isCanadaPostConfigured();
 }
 
 export function getOriginPostalCode(settingsOrigin?: string): string {

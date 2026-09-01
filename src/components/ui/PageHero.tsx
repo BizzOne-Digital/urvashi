@@ -12,6 +12,10 @@ interface PageHeroProps {
   className?: string;
 }
 
+function isPhotoBackground(src: string): boolean {
+  return /\.(png|jpe?g|webp|gif)$/i.test(src);
+}
+
 export function PageHero({
   title,
   subtitle,
@@ -21,35 +25,42 @@ export function PageHero({
   dark = true,
   className,
 }: PageHeroProps) {
+  const showImage = image && isPhotoBackground(image);
+
   return (
     <section
       className={cn(
-        "relative overflow-hidden border-b border-chrome-mid/30 py-14 sm:py-20 lg:py-24",
-        dark
-          ? "bg-gradient-to-br from-ink-black via-[#12121a] to-deep-blue text-pure-paper"
-          : "bg-gradient-to-br from-pure-paper via-pure-paper to-chrome-light/20 text-ink-black",
+        "relative overflow-hidden border-b border-white/10 py-14 sm:py-20 lg:py-24",
+        dark ? "page-section-aurora text-pure-paper" : "bg-gradient-to-br from-pure-paper via-pure-paper to-chrome-light/20 text-ink-black",
         className
       )}
     >
+      <div className="hero-grid pointer-events-none absolute inset-0 opacity-[0.25]" aria-hidden />
       <div className="cmyk-line absolute left-0 top-0 z-20 w-full" aria-hidden />
 
-      {image && (
-        <div className="pointer-events-none absolute inset-0 opacity-[0.06]">
-          <Image src={image} alt="" fill className="object-cover" aria-hidden />
+      {showImage && (
+        <div className="pointer-events-none absolute inset-0 opacity-[0.07]">
+          <Image
+            src={image}
+            alt={imageAlt || ""}
+            fill
+            className="object-cover object-center"
+            aria-hidden
+            sizes="100vw"
+          />
         </div>
       )}
 
       <div
-        className="pointer-events-none absolute -left-20 top-0 h-64 w-64 rounded-full bg-cyan/25 blur-3xl hero-shimmer"
+        className="hero-glow-orb hero-glow-orb-cyan -left-32 top-0 h-96 w-96"
         aria-hidden
       />
       <div
-        className="pointer-events-none absolute -right-16 bottom-0 h-72 w-72 rounded-full bg-magenta/20 blur-3xl hero-shimmer"
-        style={{ animationDelay: "2s" }}
+        className="hero-glow-orb hero-glow-orb-magenta -right-32 bottom-0 h-96 w-96"
         aria-hidden
       />
       <div
-        className="pointer-events-none absolute left-1/2 top-1/2 h-48 w-48 -translate-x-1/2 -translate-y-1/2 rounded-full bg-royal-blue/10 blur-3xl"
+        className="hero-glow-orb hero-glow-orb-blue left-1/2 top-1/3 h-64 w-64 -translate-x-1/2"
         aria-hidden
       />
 
@@ -88,10 +99,23 @@ export function PageHero({
             {subtitle}
           </p>
         )}
+
+        {dark && (
+          <div className="mt-8 flex flex-wrap gap-3" data-reveal data-reveal-delay="0.3">
+            {["Custom printing", "Live preview", "Canada shipping"].map((tag) => (
+              <span
+                key={tag}
+                className="rounded-full border border-white/15 bg-white/[0.06] px-4 py-1.5 text-[10px] font-bold uppercase tracking-wider text-chrome-light backdrop-blur-sm"
+              >
+                {tag}
+              </span>
+            ))}
+          </div>
+        )}
       </Container>
 
       <div
-        className="pointer-events-none absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-chrome-mid/50 to-transparent"
+        className="pointer-events-none absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent"
         aria-hidden
       />
     </section>

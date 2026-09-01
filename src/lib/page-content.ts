@@ -32,7 +32,7 @@ export function sectionText(
   return typeof value === "string" && value.trim() ? value : fallback;
 }
 
-export function sectionImage(section: IPageSection | undefined, fallback: string): string {
+export function sectionImage(section: IPageSection | undefined, fallback?: string): string | undefined {
   return section?.image?.url || section?.images?.[0]?.url || fallback;
 }
 

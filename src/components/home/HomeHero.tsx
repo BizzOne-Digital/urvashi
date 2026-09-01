@@ -101,11 +101,11 @@ export function HomeHero({ tagline = "Your idea. Your style. Printed with purpos
       <div className="gradient-orb gradient-orb-blue pointer-events-none absolute bottom-[10%] left-[30%] h-[40vh] w-[40vh]" aria-hidden />
 
       {/* Grid overlay */}
-      <div className="hero-grid pointer-events-none absolute inset-0 opacity-[0.35]" aria-hidden />
+      <div className="hero-grid pointer-events-none absolute inset-0 opacity-[0.4]" aria-hidden />
 
       <div className="cmyk-line absolute left-0 top-0 z-20 w-full" aria-hidden />
 
-      <Container className="relative z-10 flex min-h-[100vh] min-w-0 max-w-[1400px] flex-col pb-8 pt-28 sm:pt-32 lg:pb-10 lg:pt-36">
+      <Container className="relative z-10 flex min-h-[100vh] min-w-0 max-w-[1400px] flex-col pb-8 pt-32 sm:pt-36 lg:pb-10 lg:pt-40">
         <div className="grid flex-1 items-center gap-10 lg:grid-cols-[1.05fr_0.95fr] lg:gap-14">
           {/* Copy */}
           <div className="min-w-0">
@@ -171,7 +171,7 @@ export function HomeHero({ tagline = "Your idea. Your style. Printed with purpos
 
           {/* Visual showcase */}
           <div data-hero-visual className="relative mx-auto w-full max-w-lg lg:max-w-none">
-            <div className="absolute -inset-4 rounded-3xl bg-gradient-to-br from-cyan/30 via-royal-blue/20 to-magenta/30 blur-2xl animate-pulse-glow" aria-hidden />
+            <div className="absolute -inset-4 rounded-3xl bg-gradient-to-br from-cyan/45 via-royal-blue/30 to-magenta/45 blur-2xl animate-pulse-glow" aria-hidden />
             <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-[#0a0c14]/80 p-1 shadow-[0_0_60px_rgba(6,94,229,0.25)] backdrop-blur-sm">
               <div className="relative aspect-[4/3] overflow-hidden rounded-xl sm:aspect-[16/11]">
                 <HeroSlideshow slides={[...HERO_SLIDES]} className="absolute inset-0" />

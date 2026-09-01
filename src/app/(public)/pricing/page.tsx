@@ -3,6 +3,9 @@ import Link from "next/link";
 import { CmsPageHero } from "@/components/cms/CmsPageHero";
 import { Container } from "@/components/ui/Container";
 import { VibrantSection } from "@/components/ui/VibrantSection";
+import { HighlightStrip } from "@/components/ui/HighlightStrip";
+import { SectionHeader } from "@/components/ui/SectionHeader";
+import { PageCtaBanner } from "@/components/ui/PageCtaBanner";
 import { buttonVariants } from "@/components/ui/Button";
 import { getActivePricingRules, getPublishedPageBySlug, getPublishedProducts } from "@/lib/public-data";
 import { PRICING_CATALOG } from "@/lib/product-pricing";
@@ -80,46 +83,63 @@ export default async function PricingPage() {
           eyebrow: "Pricing details",
           title: "Clear starting prices",
           subtitle: "Confirmed pricing where available. Contact us for quotes on select apparel and home items.",
-          image: "/demo/pen.svg",
         }}
       />
 
+      <HighlightStrip />
+
+      <VibrantSection variant="cosmic" className="!py-12">
+        <Container>
+          <div className="grid gap-4 sm:grid-cols-3" data-reveal-stagger>
+            <div className="card-vibrant p-6 text-center" data-reveal-item>
+              <p className="font-display text-3xl font-bold gradient-heading">{fixedRows.length}</p>
+              <p className="mt-1 text-sm text-chrome-mid">Confirmed prices</p>
+            </div>
+            <div className="card-vibrant p-6 text-center" data-reveal-item>
+              <p className="font-display text-3xl font-bold gradient-heading">{quoteRows.length}</p>
+              <p className="mt-1 text-sm text-chrome-mid">Quote items</p>
+            </div>
+            <div className="card-vibrant p-6 text-center" data-reveal-item>
+              <p className="font-display text-3xl font-bold gradient-heading">CAD</p>
+              <p className="mt-1 text-sm text-chrome-mid">All listed in Canadian dollars</p>
+            </div>
+          </div>
+        </Container>
+      </VibrantSection>
+
       <VibrantSection variant="mesh">
         <Container>
-          <div className="mb-8" data-reveal>
-            <p className="gradient-eyebrow text-xs font-bold uppercase tracking-[0.2em]">Pricing details</p>
-            <h2 className="heading-section mt-2 gradient-heading">
-              {sectionText(tableSection, "heading", "Confirmed starting prices")}
-            </h2>
-            <p className="mt-3 max-w-2xl text-carbon">
-              {sectionText(
-                tableSection,
-                "body",
-                "All listed prices are starting points in CAD. Final totals may include customization, shipping, and taxes at checkout or invoice."
-              )}
-            </p>
-          </div>
+          <SectionHeader
+            eyebrow="Pricing details"
+            title={sectionText(tableSection, "heading", "Confirmed starting prices")}
+            subtitle={sectionText(
+              tableSection,
+              "body",
+              "All listed prices are starting points in CAD. Final totals may include customization, shipping, and taxes at checkout or invoice."
+            )}
+            className="mb-8"
+          />
 
           <div className="card-vibrant overflow-hidden" data-reveal>
             <div className="overflow-x-auto">
               <table className="w-full min-w-[520px] text-left text-sm">
                 <thead>
-                  <tr className="border-b border-chrome-light/60 bg-gradient-to-r from-royal-blue/5 to-cyan/5">
-                    <th className="px-4 py-4 font-display font-semibold text-ink-black sm:px-6">Product</th>
-                    <th className="px-4 py-4 font-display font-semibold text-ink-black sm:px-6">Price</th>
-                    <th className="hidden px-4 py-4 font-display font-semibold text-ink-black sm:table-cell sm:px-6">Notes</th>
+                  <tr className="border-b border-white/10 bg-white/[0.04]">
+                    <th className="px-4 py-4 font-display font-semibold text-pure-paper sm:px-6">Product</th>
+                    <th className="px-4 py-4 font-display font-semibold text-pure-paper sm:px-6">Price</th>
+                    <th className="hidden px-4 py-4 font-display font-semibold text-pure-paper sm:table-cell sm:px-6">Notes</th>
                   </tr>
                 </thead>
                 <tbody>
                   {fixedRows.map((row) => (
-                    <tr key={row.slug} className="border-b border-chrome-light/40 last:border-0">
+                    <tr key={row.slug} className="border-b border-white/10 last:border-0">
                       <td className="px-4 py-4 sm:px-6">
-                        <Link href={row.shopHref} className="font-medium text-ink-black hover:text-royal-blue">
+                        <Link href={row.shopHref} className="font-medium text-pure-paper hover:text-cyan">
                           {row.displayName}
                         </Link>
                       </td>
-                      <td className="px-4 py-4 font-semibold text-royal-blue sm:px-6">{row.priceDisplay}</td>
-                      <td className="hidden px-4 py-4 text-carbon sm:table-cell sm:px-6">{row.note || "—"}</td>
+                      <td className="px-4 py-4 font-semibold text-cyan sm:px-6">{row.priceDisplay}</td>
+                      <td className="hidden px-4 py-4 text-chrome-light sm:table-cell sm:px-6">{row.note || "—"}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -129,10 +149,10 @@ export default async function PricingPage() {
 
           {quoteRows.length > 0 && (
             <div className="mt-10" data-reveal>
-              <h2 className="heading-section text-xl">
+              <h2 className="heading-section text-xl gradient-heading-light">
                 {sectionText(quoteSection, "heading", "Contact for pricing")}
               </h2>
-              <p className="mt-2 text-carbon">
+              <p className="mt-2 text-chrome-light">
                 {sectionText(
                   quoteSection,
                   "body",
@@ -142,7 +162,7 @@ export default async function PricingPage() {
               <div className="mt-6 grid gap-4 sm:grid-cols-2">
                 {quoteRows.map((row) => (
                   <div key={row.slug} className="card-vibrant flex items-center justify-between gap-4 p-4">
-                    <span className="font-medium">{row.displayName}</span>
+                    <span className="font-medium text-pure-paper">{row.displayName}</span>
                     <Link href="/contact" className="text-sm font-semibold text-cyan hover:underline">
                       Get a quote →
                     </Link>
@@ -162,6 +182,15 @@ export default async function PricingPage() {
           </div>
         </Container>
       </VibrantSection>
+
+      <PageCtaBanner
+        title="See your total before you pay"
+        description="Checkout shows Canada Post shipping and provincial tax automatically."
+        primaryHref="/shop"
+        primaryLabel="Browse products"
+        secondaryHref="/customize"
+        secondaryLabel="Open customizer"
+      />
     </>
   );
 }

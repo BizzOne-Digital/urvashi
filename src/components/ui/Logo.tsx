@@ -23,8 +23,8 @@ const variantStyles = {
     plaque: "px-2 py-1",
   },
   headerHome: {
-    image: "h-10 w-auto max-w-[140px] sm:h-11 lg:h-12 lg:max-w-[165px]",
-    plaque: "px-2.5 py-1.5",
+    image: "h-8 w-auto max-w-[min(calc(100vw-11rem),160px)] object-contain object-left sm:h-10 sm:max-w-[140px] lg:h-12 lg:max-w-[165px]",
+    plaque: "px-2 py-1 sm:px-2.5 sm:py-1.5",
   },
   default: {
     image: "h-auto w-full max-w-[180px] object-contain",
@@ -48,7 +48,7 @@ export function Logo({
   const content = (
     <span
       className={cn(
-        "inline-flex items-center justify-center rounded-sm bg-pure-paper shadow-sm",
+        "inline-flex max-w-full items-center justify-center overflow-visible rounded-sm bg-pure-paper shadow-sm",
         styles.plaque,
         plaqueClassName
       )}

@@ -18,6 +18,7 @@
     "sync-pricing": "tsx scripts/sync-pricing.ts",
     "sync-products": "tsx scripts/sync-products.ts",
     "sync-services": "tsx scripts/ensure-custom-printing-service.ts",
+    "sync-faqs": "tsx scripts/ensure-faqs.ts",
     "test": "vitest run",
     "test:watch": "vitest"
   },

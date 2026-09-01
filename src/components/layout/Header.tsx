@@ -5,7 +5,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Logo } from "@/components/ui/Logo";
 import { Container } from "@/components/ui/Container";
+import { PromoMarquee } from "@/components/layout/PromoMarquee";
 import { cn } from "@/lib/utils";
+import type { MarqueeItem } from "@/lib/promo";
 
 export interface HeaderSettings {
   announcement?: string;
@@ -69,7 +71,13 @@ interface CartResponse {
   items?: unknown[];
 }
 
-export function Header({ settings }: { settings: HeaderSettings }) {
+export function Header({
+  settings,
+  marqueeItems = [],
+}: {
+  settings: HeaderSettings;
+  marqueeItems?: MarqueeItem[];
+}) {
   const pathname = usePathname();
   const isHome = pathname === "/";
   const menuId = useId();
@@ -146,20 +154,14 @@ export function Header({ settings }: { settings: HeaderSettings }) {
 
         <Container className="min-w-0 max-w-[1400px]">
           <div className="flex min-w-0 items-center justify-between gap-2 py-2 sm:gap-3 min-h-[64px] lg:min-h-[72px]">
-            <div className="flex shrink-0 items-center">
-              <Link href="/" className="inline-flex md:hidden" aria-label={`${settings.shortName} home`}>
-                <span className="logo-plaque inline-flex items-center justify-center px-3 py-1.5">
-                  <span className="font-display text-lg font-bold italic tracking-tight text-ink-black">DPM</span>
-                </span>
-              </Link>
-              <div className="hidden md:block">
-                <Logo
-                  src={settings.logoPath}
-                  alt={settings.shortName}
-                  variant="headerHome"
-                  priority
-                />
-              </div>
+            <div className="flex min-w-0 max-w-[46%] shrink-0 items-center sm:max-w-none">
+              <Logo
+                src={settings.logoPath}
+                alt={settings.shortName}
+                variant="headerHome"
+                priority
+                className="min-w-0 max-w-full"
+              />
             </div>
 
             <nav className="hidden flex-1 items-center justify-center xl:flex" aria-label="Main navigation">
@@ -261,6 +263,8 @@ export function Header({ settings }: { settings: HeaderSettings }) {
           </div>
         )}
       </header>
+
+      {marqueeItems.length > 0 && <PromoMarquee items={marqueeItems} />}
     </div>
   );
 }

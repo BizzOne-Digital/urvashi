@@ -18,7 +18,7 @@ export function CmsPageHero({ section, fallback }: CmsPageHeroProps) {
       eyebrow={sectionText(section, "eyebrow", fallback.eyebrow)}
       title={sectionText(section, "heading", fallback.title)}
       subtitle={sectionText(section, "subheading", fallback.subtitle)}
-      image={sectionImage(section, fallback.image || "/demo/ink-lab.svg")}
+      image={sectionImage(section, fallback.image)}
     />
   );
 }

@@ -5,6 +5,7 @@ import Image from "next/image";
 import { getProductDisplayImages } from "@/lib/product-catalog";
 import { resolveImageSrc } from "@/lib/image-url";
 import { getProductPriceDisplay } from "@/lib/pricing";
+import { isNewProduct, isPromoProduct } from "@/lib/promo";
 import { cn } from "@/lib/utils";
 
 interface ProductCardProduct {
@@ -22,6 +23,7 @@ interface ProductCardProduct {
   currency?: string;
   featured?: boolean;
   onSale?: boolean;
+  createdAt?: string;
   categorySlug?: string;
 }
 
@@ -34,6 +36,8 @@ interface ProductCardProps {
 export function ProductCard({ product, className, priority = false }: ProductCardProps) {
   const { blank, customized } = getProductDisplayImages(product);
   const { display, isQuote } = getProductPriceDisplay(product, product.currency || "CAD");
+  const isNew = isNewProduct(product.createdAt);
+  const isPromo = isPromoProduct(product) && !isNew;
 
   return (
     <article className={cn("card-product group flex h-full flex-col", className)} data-reveal-item>
@@ -90,7 +94,17 @@ export function ProductCard({ product, className, priority = false }: ProductCar
             <div className="flex h-full items-center justify-center text-sm text-chrome-mid">No image</div>
           )}
 
-          {product.featured && (
+          {isNew && (
+            <span className="absolute left-3 top-3 rounded-sm bg-cyan px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-pure-paper shadow-lg">
+              New
+            </span>
+          )}
+          {isPromo && (
+            <span className="absolute left-3 top-3 rounded-sm bg-gradient-to-r from-magenta to-royal-blue px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-pure-paper shadow-lg">
+              Promo
+            </span>
+          )}
+          {product.featured && !isNew && !isPromo && (
             <span className="absolute left-3 top-3 rounded-sm bg-gradient-to-r from-royal-blue to-cyan px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-pure-paper shadow-lg">
               Featured
             </span>

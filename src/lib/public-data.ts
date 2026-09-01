@@ -6,6 +6,8 @@ import ProductCategory from "@/models/ProductCategory";
 import Service, { IService } from "@/models/Service";
 import Testimonial from "@/models/Testimonial";
 import FAQ from "@/models/FAQ";
+import { DEFAULT_FAQS } from "./default-faqs";
+import { DEFAULT_SERVICES, getDefaultServiceBySlug } from "./default-services";
 import BlogPost from "@/models/BlogPost";
 import MediaAsset from "@/models/MediaAsset";
 import GalleryCategory from "@/models/GalleryCategory";
@@ -71,17 +73,26 @@ export async function getPublishedProducts() {
 export async function getShopProducts(params: {
   search?: string;
   category?: string;
+  collection?: string;
   page?: number;
   perPage?: number;
   sort?: string;
 }) {
-  const { search, category, page = 1, perPage = 12, sort = "name" } = params;
+  const { search, category, collection, page = 1, perPage = 12, sort = "name" } = params;
 
   return withDb(async () => {
     const filter: Record<string, unknown> = { status: "published" };
     if (category) filter.categorySlug = category;
     if (search?.trim()) {
       filter.$text = { $search: search.trim() };
+    }
+
+    if (collection === "new") {
+      const cutoff = new Date();
+      cutoff.setDate(cutoff.getDate() - 60);
+      filter.createdAt = { $gte: cutoff };
+    } else if (collection === "promo") {
+      filter.$or = [{ onSale: true }, { featured: true }];
     }
 
     const sortMap: Record<string, Record<string, 1 | -1>> = {
@@ -114,6 +125,23 @@ export async function getProductBySlug(slug: string) {
   });
 }
 
+export async function getPromoMarqueeProducts(limit = 8) {
+  return withDb(async () => {
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - 60);
+
+    const products = await Product.find({
+      status: "published",
+      $or: [{ onSale: true }, { featured: true }, { createdAt: { $gte: cutoff } }],
+    })
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .lean();
+
+    return toPlain(products);
+  });
+}
+
 export const getProductCategories = unstable_cache(
   async () =>
     safeQuery(async () => {
@@ -125,20 +153,29 @@ export const getProductCategories = unstable_cache(
 );
 
 export const getPublishedServices = unstable_cache(
-  async () =>
-    safeQuery(async () => {
+  async () => {
+    try {
+      await connectDB();
       const services = await Service.find({ status: "published" }).sort({ order: 1 }).lean();
-      return toPlain(services);
-    }, []),
+      if (services.length > 0) return toPlain(services);
+    } catch (error) {
+      console.error("[public-data] Services query failed:", error);
+    }
+    return DEFAULT_SERVICES;
+  },
   ["published-services"],
   { tags: [CACHE_TAGS.services], revalidate: 60 }
 );
 
 export async function getServiceBySlug(slug: string) {
-  return safeQuery(async () => {
+  try {
+    await connectDB();
     const service = await Service.findOne({ slug, status: "published" }).lean();
-    return service ? toPlain(service) : null;
-  }, null);
+    if (service) return toPlain(service);
+  } catch (error) {
+    console.error("[public-data] Service by slug failed:", error);
+  }
+  return getDefaultServiceBySlug(slug);
 }
 
 export const getPublishedTestimonials = unstable_cache(
@@ -154,11 +191,16 @@ export const getPublishedTestimonials = unstable_cache(
 );
 
 export const getPublishedFaqs = unstable_cache(
-  async () =>
-    safeQuery(async () => {
+  async () => {
+    try {
+      await connectDB();
       const faqs = await FAQ.find({ status: "published" }).sort({ order: 1 }).lean();
-      return toPlain(faqs);
-    }, []),
+      if (faqs.length > 0) return toPlain(faqs);
+    } catch (error) {
+      console.error("[public-data] FAQ query failed:", error);
+    }
+    return DEFAULT_FAQS;
+  },
   ["faqs"],
   { tags: [CACHE_TAGS.faqs], revalidate: 60 }
 );
