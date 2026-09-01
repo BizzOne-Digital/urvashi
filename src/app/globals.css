@@ -487,4 +487,18 @@
     content: "✦";
     @apply text-cyan text-xs mt-1 shrink-0;
   }
+
+  .product-detail-panel {
+    color: #fefefe;
+  }
+
+  .product-detail-panel p,
+  .product-detail-panel label,
+  .product-detail-panel span {
+    color: #fefefe;
+  }
+
+  .product-detail-panel .text-muted {
+    color: #b8bcc8;
+  }
 }

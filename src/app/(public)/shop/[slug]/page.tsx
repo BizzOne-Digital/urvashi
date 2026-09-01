@@ -75,7 +75,7 @@ export default async function ProductDetailPage({ params }: Props) {
             <h2 className="heading-section text-pure-paper">Details</h2>
             <div className="card-vibrant mt-6 p-6 sm:p-8 prose-dpm">
               {product.longDescription.split(/\n\n+/).map((paragraph) => (
-                <p key={paragraph.slice(0, 32)} className="text-chrome-light leading-relaxed">
+                <p key={paragraph.slice(0, 32)} className="!text-white leading-relaxed">
                   {paragraph}
                 </p>
               ))}

@@ -103,7 +103,7 @@ export function ProductDetailExperience({ product }: ProductDetailExperienceProp
         )}
       </div>
 
-      <div className="space-y-5">
+      <div className="product-detail-panel space-y-5">
         {product.categorySlug && (
           <p className="text-xs font-semibold uppercase tracking-wider text-cyan">
             {product.categorySlug.replace(/-/g, " ")}
@@ -147,16 +147,16 @@ export function ProductDetailExperience({ product }: ProductDetailExperienceProp
         <p className="text-2xl font-bold text-cyan">{display}</p>
 
         {product.shortDescription && (
-          <p className="text-pure-paper leading-relaxed">{product.shortDescription}</p>
+          <p className="leading-relaxed !text-white">{product.shortDescription}</p>
         )}
 
         {mode === "blank" && allowsBlank && (
           <div className="space-y-4 border-t border-white/10 pt-5">
-            <p className="text-sm text-pure-paper/90">
+            <p className="text-sm !text-white">
               Purchase a blank {product.name.toLowerCase()} ready for your own use or decoration.
             </p>
             <div>
-              <label htmlFor="quantity" className="mb-1 block text-sm font-medium text-pure-paper">
+              <label htmlFor="quantity" className="mb-1 block text-sm font-medium !text-white">
                 Quantity
               </label>
               <input
@@ -169,7 +169,7 @@ export function ProductDetailExperience({ product }: ProductDetailExperienceProp
                 className={cn(fieldClass, "w-24")}
               />
               {product.minQuantity > 1 && (
-                <p className="mt-1 text-xs text-chrome-mid">Minimum order: {product.minQuantity}</p>
+                <p className="mt-1 text-xs text-muted">Minimum order: {product.minQuantity}</p>
               )}
             </div>
             <Button onClick={handleAddBlank} disabled={adding}>
@@ -180,14 +180,14 @@ export function ProductDetailExperience({ product }: ProductDetailExperienceProp
 
         {mode === "customized" && allowsCustom && (
           <div className="space-y-4 border-t border-white/10 pt-5">
-            <p className="text-sm text-pure-paper/90">
+            <p className="text-sm !text-white">
               Upload your artwork and we will customize this product for you. Starting at{" "}
-              <span className="font-semibold text-pure-paper">
+              <span className="font-semibold !text-white">
                 {formatCurrency(customBase, product.currency)}
               </span>{" "}
               with your own design.
             </p>
-            <p className="text-sm text-chrome-mid">
+            <p className="text-sm text-muted">
               Optional design help from our team: +{formatCurrency(designFee, product.currency)} (we send 3–4 design
               options).
             </p>
