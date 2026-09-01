@@ -445,8 +445,30 @@
     @apply max-w-none text-base leading-relaxed text-chrome-light;
   }
 
+  .prose-dpm p,
+  .prose-dpm li,
+  .prose-dpm dd,
+  .prose-dpm dt {
+    @apply text-chrome-light;
+  }
+
+  .prose-dpm strong,
+  .prose-dpm b {
+    @apply text-pure-paper font-semibold;
+  }
+
+  .prose-dpm h2,
+  .prose-dpm h3,
+  .prose-dpm h4 {
+    @apply font-display font-bold text-pure-paper;
+  }
+
   .prose-dpm h2 {
-    @apply font-display text-2xl font-bold text-pure-paper;
+    @apply text-2xl;
+  }
+
+  .prose-dpm h3 {
+    @apply text-xl;
   }
 
   .prose-dpm a {

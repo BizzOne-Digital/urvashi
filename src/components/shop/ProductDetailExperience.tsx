@@ -147,12 +147,12 @@ export function ProductDetailExperience({ product }: ProductDetailExperienceProp
         <p className="text-2xl font-bold text-cyan">{display}</p>
 
         {product.shortDescription && (
-          <p className="text-chrome-light leading-relaxed">{product.shortDescription}</p>
+          <p className="text-pure-paper leading-relaxed">{product.shortDescription}</p>
         )}
 
         {mode === "blank" && allowsBlank && (
           <div className="space-y-4 border-t border-white/10 pt-5">
-            <p className="text-sm text-chrome-light">
+            <p className="text-sm text-pure-paper/90">
               Purchase a blank {product.name.toLowerCase()} ready for your own use or decoration.
             </p>
             <div>
@@ -180,7 +180,7 @@ export function ProductDetailExperience({ product }: ProductDetailExperienceProp
 
         {mode === "customized" && allowsCustom && (
           <div className="space-y-4 border-t border-white/10 pt-5">
-            <p className="text-sm text-chrome-light">
+            <p className="text-sm text-pure-paper/90">
               Upload your artwork and we will customize this product for you. Starting at{" "}
               <span className="font-semibold text-pure-paper">
                 {formatCurrency(customBase, product.currency)}

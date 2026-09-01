@@ -70,10 +70,16 @@ export default async function ProductDetailPage({ params }: Props) {
       </section>
 
       {product.longDescription && (
-        <section className="border-t border-white/10 bg-[#0a0c14] py-16">
-          <Container className="max-w-3xl prose-dpm">
-            <h2>Details</h2>
-            <p>{product.longDescription}</p>
+        <section className="border-t border-white/10 bg-[#0a0c14] py-16 text-chrome-light">
+          <Container className="max-w-3xl">
+            <h2 className="heading-section text-pure-paper">Details</h2>
+            <div className="card-vibrant mt-6 p-6 sm:p-8 prose-dpm">
+              {product.longDescription.split(/\n\n+/).map((paragraph) => (
+                <p key={paragraph.slice(0, 32)} className="text-chrome-light leading-relaxed">
+                  {paragraph}
+                </p>
+              ))}
+            </div>
           </Container>
         </section>
       )}
