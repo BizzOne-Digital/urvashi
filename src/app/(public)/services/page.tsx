@@ -125,14 +125,14 @@ export default async function ServicesPage() {
               <h3 className="heading-section text-xl gradient-heading-light">How it works</h3>
               <div className="mt-8 grid gap-6 md:grid-cols-3">
                 {detail.processSteps.map((step, index) => (
-                  <div key={step.title} className="card-vibrant overflow-hidden">
+                  <div key={step.title} className="card-vibrant group overflow-hidden">
                     {step.image?.url && (
-                      <div className="relative aspect-video bg-[#0a0c14]">
+                      <div className="relative aspect-[4/3] overflow-hidden bg-[#0a0c14]">
                         <Image
                           src={resolveImageSrc(step.image.url)}
                           alt={step.image.alt || step.title}
                           fill
-                          className="object-contain p-4"
+                          className="object-cover object-center transition-transform duration-700 group-hover:scale-105"
                           sizes="33vw"
                         />
                       </div>

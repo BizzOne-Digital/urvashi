@@ -118,14 +118,14 @@ export default async function ServiceDetailPage({ params }: Props) {
             <h2 className="heading-section gradient-heading-light">Our process</h2>
             <div className="mt-10 grid gap-8 md:grid-cols-3">
               {processSteps.map((step, i) => (
-                <div key={step.title} className="card-vibrant overflow-hidden">
-                  <div className="relative mb-0 aspect-video bg-[#0a0c14]">
+                <div key={step.title} className="card-vibrant group overflow-hidden">
+                  <div className="relative mb-0 aspect-[4/3] overflow-hidden bg-[#0a0c14]">
                     {step.image?.url && (
                       <Image
                         src={resolveImageSrc(step.image.url)}
                         alt={step.title}
                         fill
-                        className="object-contain p-4"
+                        className="object-cover object-center transition-transform duration-700 group-hover:scale-105"
                         sizes="33vw"
                       />
                     )}

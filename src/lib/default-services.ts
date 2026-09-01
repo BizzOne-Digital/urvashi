@@ -93,7 +93,7 @@ export const DEFAULT_SERVICES: DefaultService[] = [
         {
           title: "Print & deliver",
           description: "Once approved, we produce your order and coordinate pickup or Canada Post shipping.",
-          image: { url: "/home/process/tumbler.png", alt: "Print and deliver your order" },
+          image: { url: "/home/process/product-lineup.png", alt: "Print and deliver your custom products" },
         },
       ],
       pricingNote:

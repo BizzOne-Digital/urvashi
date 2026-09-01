@@ -53,18 +53,18 @@ async function main() {
       processSteps: [
         {
           title: "Share your idea",
-          description: "Upload artwork or describe your vision.",
-          image: { url: "/demo/mug-white.svg", alt: "Share your idea" },
+          description: "Tell us what you want printed, add text in the customizer, or upload your artwork.",
+          image: { url: "/home/process/design-tablet.png", alt: "Share your custom print idea" },
         },
         {
           title: "Review & confirm",
-          description: "We confirm pricing, placement, and timeline.",
-          image: { url: "/demo/tshirt.svg", alt: "Review and confirm" },
+          description: "We review your request, confirm pricing, placement, and timeline before production.",
+          image: { url: "/home/process/heat-press.png", alt: "Review and confirm your order" },
         },
         {
           title: "Print & deliver",
-          description: "Your order is produced with care and ready for pickup or shipping.",
-          image: { url: "/demo/pen.svg", alt: "Print and deliver" },
+          description: "Once approved, we produce your order and coordinate pickup or Canada Post shipping.",
+          image: { url: "/home/process/product-lineup.png", alt: "Print and deliver your custom products" },
         },
       ],
       sectionImages: [
