@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 export type MonerisEnvironment = "qa" | "prod";
@@ -25,6 +25,7 @@ interface MonerisCheckoutInstance {
   setCheckoutDiv: (id: string) => void;
   setCallback: (event: string, callback: (data: string) => void) => void;
   startCheckout: (ticket: string) => void;
+  closeCheckout: () => void;
 }
 
 type MonerisCheckoutConstructor = new () => MonerisCheckoutInstance;
@@ -45,8 +46,7 @@ function getCheckoutConstructor(): MonerisCheckoutConstructor | undefined {
 function loadMonerisScript(mode: MonerisEnvironment): Promise<void> {
   if (typeof window === "undefined") return Promise.resolve();
 
-  const existing = getCheckoutConstructor();
-  if (existing) return Promise.resolve();
+  if (getCheckoutConstructor()) return Promise.resolve();
 
   if (!scriptPromises[mode]) {
     scriptPromises[mode] = new Promise((resolve, reject) => {
@@ -76,6 +76,13 @@ function loadMonerisScript(mode: MonerisEnvironment): Promise<void> {
   return scriptPromises[mode]!;
 }
 
+function cleanupCheckoutDom(divId: string) {
+  const el = document.getElementById(divId);
+  if (el) el.innerHTML = "";
+  document.body.classList.remove("checkoutHtmlStyleFromiFrame");
+  document.documentElement.classList.remove("checkoutHtmlStyleFromiFrame");
+}
+
 export function MonerisCheckout({
   ticket,
   mode,
@@ -83,10 +90,11 @@ export function MonerisCheckout({
   onCancel,
   onError,
 }: MonerisCheckoutProps) {
-  const startedRef = useRef(false);
+  const reactId = useId();
+  const divId = `monerisCheckout-${reactId.replace(/:/g, "")}`;
+  const checkoutRef = useRef<MonerisCheckoutInstance | null>(null);
   const loadingRef = useRef(true);
   const [loading, setLoading] = useState(true);
-  const [mounted, setMounted] = useState(false);
 
   const setLoadingState = (value: boolean) => {
     loadingRef.current = value;
@@ -102,10 +110,6 @@ export function MonerisCheckout({
     onCancelRef.current = onCancel;
     onErrorRef.current = onError;
   }, [onCancel, onComplete, onError]);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -125,7 +129,7 @@ export function MonerisCheckout({
 
       try {
         await loadMonerisScript(mode);
-        if (cancelled || startedRef.current) return;
+        if (cancelled) return;
 
         const CheckoutCtor = getCheckoutConstructor();
         if (!CheckoutCtor) {
@@ -133,12 +137,19 @@ export function MonerisCheckout({
           return;
         }
 
+        cleanupCheckoutDom(divId);
+
         const checkout = new CheckoutCtor();
+        checkoutRef.current = checkout;
         checkout.setMode(mode);
-        checkout.setCheckoutDiv("monerisCheckout");
+        checkout.setCheckoutDiv(divId);
 
         checkout.setCallback("page_loaded", () => {
           if (!cancelled) setLoadingState(false);
+        });
+
+        checkout.setCallback("page_closed", () => {
+          if (!cancelled) onCancelRef.current();
         });
 
         checkout.setCallback("cancel_transaction", () => {
@@ -163,7 +174,6 @@ export function MonerisCheckout({
           }
         });
 
-        startedRef.current = true;
         checkout.startCheckout(ticket);
       } catch (err) {
         if (!cancelled) {
@@ -177,20 +187,35 @@ export function MonerisCheckout({
     return () => {
       cancelled = true;
       if (timeoutId) clearTimeout(timeoutId);
+      checkoutRef.current?.closeCheckout?.();
+      checkoutRef.current = null;
+      cleanupCheckoutDom(divId);
     };
-  }, [ticket, mode]);
+  }, [ticket, mode, divId]);
 
-  const overlay = (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4">
-      <div className="relative w-full max-w-3xl">
-        {loading && (
-          <p className="mb-4 text-center text-sm text-chrome-light">Loading secure payment…</p>
-        )}
-        <div id="monerisCheckout" className="min-h-[420px] w-full" />
-      </div>
-    </div>
+  if (typeof document === "undefined") return null;
+
+  return createPortal(
+    <>
+      {loading && (
+        <div
+          className="fixed inset-0 z-[2147483646] flex flex-col items-center justify-center gap-4 bg-[#0a0c14]/95"
+          role="status"
+          aria-live="polite"
+        >
+          <p className="text-sm text-pure-paper">Loading secure payment…</p>
+          <button
+            type="button"
+            className="rounded-sm border border-white/20 px-4 py-2 text-sm text-chrome-light hover:border-white/40 hover:text-pure-paper"
+            onClick={() => onCancelRef.current()}
+          >
+            Cancel
+          </button>
+        </div>
+      )}
+      {/* Moneris injects a fullscreen iframe into this div — no overlay wrapper */}
+      <div id={divId} className="fixed inset-0 z-[2147483647]" />
+    </>,
+    document.body
   );
-
-  if (!mounted) return overlay;
-  return createPortal(overlay, document.body);
 }
