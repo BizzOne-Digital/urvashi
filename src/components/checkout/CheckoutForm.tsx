@@ -9,8 +9,11 @@ import { toast } from "sonner";
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { AddressAutocomplete } from "@/components/checkout/AddressAutocomplete";
+import { MonerisCheckout } from "@/components/payments/MonerisCheckout";
 import { formatCurrency } from "@/lib/utils";
 import type { CalculatedLineItem } from "@/lib/pricing";
+
+type MonerisEnvironment = "qa" | "prod";
 
 interface ShippingRate {
   id: string;
@@ -51,9 +54,21 @@ type CheckoutFormData = z.infer<typeof checkoutSchema>;
 
 interface CheckoutFormProps {
   pickupEnabled?: boolean;
+  monerisEnabled?: boolean;
+  monerisMode?: MonerisEnvironment;
 }
 
-export function CheckoutForm({ pickupEnabled = false }: CheckoutFormProps) {
+interface PendingMonerisPayment {
+  ticket: string;
+  orderNumber: string;
+  accessToken: string;
+}
+
+export function CheckoutForm({
+  pickupEnabled = false,
+  monerisEnabled = false,
+  monerisMode = "qa",
+}: CheckoutFormProps) {
   const router = useRouter();
   const [cart, setCart] = useState<{
     items: CalculatedLineItem[];
@@ -63,6 +78,7 @@ export function CheckoutForm({ pickupEnabled = false }: CheckoutFormProps) {
   const [submitting, setSubmitting] = useState(false);
   const [ratesLoading, setRatesLoading] = useState(false);
   const [rateSummary, setRateSummary] = useState<RateSummary | null>(null);
+  const [pendingPayment, setPendingPayment] = useState<PendingMonerisPayment | null>(null);
 
   const {
     register,
@@ -156,16 +172,51 @@ export function CheckoutForm({ pickupEnabled = false }: CheckoutFormProps) {
             method: data.shippingMethod,
           },
           customerNotes: data.customerNotes,
-          paymentMethod: "manual_invoice",
+          paymentMethod: monerisEnabled ? "moneris" : "manual_invoice",
         }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Checkout failed");
+
+      if (json.monerisTicket) {
+        setPendingPayment({
+          ticket: json.monerisTicket,
+          orderNumber: json.orderNumber,
+          accessToken: json.accessToken,
+        });
+        return;
+      }
+
       router.push(`/order/success?orderNumber=${json.orderNumber}&token=${json.accessToken}`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Checkout failed");
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleMonerisComplete = async (ticket: string) => {
+    if (!pendingPayment) return;
+
+    try {
+      const res = await fetch("/api/moneris/confirm-order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ticket,
+          orderNumber: pendingPayment.orderNumber,
+          accessToken: pendingPayment.accessToken,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Payment confirmation failed");
+
+      setPendingPayment(null);
+      router.push(
+        `/order/success?orderNumber=${pendingPayment.orderNumber}&token=${pendingPayment.accessToken}`
+      );
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Payment confirmation failed");
     }
   };
 
@@ -329,7 +380,11 @@ export function CheckoutForm({ pickupEnabled = false }: CheckoutFormProps) {
           disabled={submitting || ratesLoading || !rateSummary}
           className="w-full sm:w-auto"
         >
-          {submitting ? "Placing order…" : "Place order"}
+          {submitting
+            ? "Processing…"
+            : monerisEnabled
+              ? "Pay & place order"
+              : "Place order"}
         </Button>
         {!rateSummary && postalCode.replace(/\s/g, "").length >= 6 && !ratesLoading && (
           <p className="text-xs text-chrome-mid">
@@ -375,9 +430,24 @@ export function CheckoutForm({ pickupEnabled = false }: CheckoutFormProps) {
           </p>
         </div>
         <p className="mt-3 text-xs text-chrome-mid">
-          Shipping via Canada Post with tracking. Taxes calculated for your province.
+          {monerisEnabled
+            ? "Pay securely with Moneris. Shipping via Canada Post with tracking."
+            : "Shipping via Canada Post with tracking. Taxes calculated for your province."}
         </p>
       </div>
+
+      {pendingPayment && (
+        <MonerisCheckout
+          ticket={pendingPayment.ticket}
+          mode={monerisMode}
+          onComplete={handleMonerisComplete}
+          onCancel={() => {
+            setPendingPayment(null);
+            toast.message("Payment cancelled. Your order is saved — contact us to complete payment.");
+          }}
+          onError={(message) => toast.error(message)}
+        />
+      )}
     </div>
   );
 }

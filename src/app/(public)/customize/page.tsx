@@ -8,21 +8,30 @@ import { SectionHeader } from "@/components/ui/SectionHeader";
 import { PageCtaBanner } from "@/components/ui/PageCtaBanner";
 import { CustomizeUploadForm } from "@/components/customize/CustomizeUploadForm";
 import { getCachedSettings } from "@/lib/settings";
+import { getCustomizeDesignFee } from "@/lib/customize-submission";
+import { getPublicMonerisMode } from "@/lib/moneris";
 
 export const metadata: Metadata = {
   title: "Customize",
-  description: "Upload your picture and details — we'll contact you about your custom print order.",
+  description:
+    "Upload your picture, pay for our design service if you want us to create options for you, or submit your own artwork for printing.",
 };
 
-export default async function CustomizePage() {
+interface Props {
+  searchParams: Promise<{ cancelled?: string }>;
+}
+
+export default async function CustomizePage({ searchParams }: Props) {
   const settings = await getCachedSettings();
+  const { cancelled } = await searchParams;
+  const designFee = getCustomizeDesignFee();
 
   return (
     <>
       <PageHero
         eyebrow="Custom orders"
         title="Send us your design"
-        subtitle="Upload your picture, add your name, email, and phone — we'll review it and get back to you with pricing and next steps."
+        subtitle="Upload your picture and contact details. Use your own artwork, or choose our design service — pay online and we will email you 2–3 custom options."
         image="/home/customizer-preview.jpg"
       />
 
@@ -33,12 +42,20 @@ export default async function CustomizePage() {
           <SectionHeader
             eyebrow="Quick request"
             title="Upload & submit"
-            subtitle="No product picker needed. Share your artwork and contact details and our team will follow up by email or phone."
+            subtitle="Upload your images here. If you want DPM to design for you, check “I prefer your design”, pay the fee, and we will email options after reviewing your upload."
             className="mb-8"
           />
 
+          {cancelled === "1" && (
+            <p className="mb-6 rounded-lg border border-deep-magenta/40 bg-deep-magenta/10 px-4 py-3 text-sm text-pure-paper">
+              Payment was cancelled. Your upload was not submitted — you can try again below.
+            </p>
+          )}
+
           <div className="rounded-xl border border-white/10 bg-[#050508] p-5 shadow-[0_0_40px_rgba(6,94,229,0.12)] sm:p-8">
             <CustomizeUploadForm
+              designFee={designFee}
+              monerisMode={getPublicMonerisMode()}
               rightsConfirmationCopy={settings.customization?.rightsConfirmationCopy}
             />
           </div>

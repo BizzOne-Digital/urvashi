@@ -68,6 +68,7 @@ export interface IOrder extends Document {
   statusHistory: IOrderStatusHistory[];
   paymentMethod?: string;
   stripeSessionId?: string;
+  monerisTicket?: string;
   adminNotes?: string;
   customerNotes?: string;
   accessToken: string;
@@ -149,6 +150,7 @@ const OrderSchema = new Schema<IOrder>(
     ],
     paymentMethod: String,
     stripeSessionId: String,
+    monerisTicket: String,
     adminNotes: String,
     customerNotes: String,
     accessToken: { type: String, required: true, index: true },

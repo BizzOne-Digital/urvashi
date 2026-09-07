@@ -8,6 +8,7 @@ import { generateOrderNumber } from "@/lib/utils";
 import { getSettings } from "@/lib/settings";
 import { sendEmail } from "@/lib/email";
 import { createStripeCheckoutSession, isStripeConfigured } from "@/lib/stripe";
+import { isMonerisConfigured, monerisPreload } from "@/lib/moneris";
 import { calculateOrderTotals } from "@/lib/order-totals";
 import Order from "@/models/Order";
 import CustomerArtwork from "@/models/CustomerArtwork";
@@ -43,7 +44,7 @@ const checkoutSchema = z.object({
     })
     .optional(),
   customerNotes: z.string().max(2000).optional(),
-  paymentMethod: z.enum(["manual_invoice", "stripe"]).default("manual_invoice"),
+  paymentMethod: z.enum(["manual_invoice", "moneris", "stripe"]).default("manual_invoice"),
 });
 
 export async function POST(request: NextRequest) {
@@ -167,6 +168,9 @@ export async function POST(request: NextRequest) {
       },
     }));
 
+    const useMoneris = data.paymentMethod === "moneris" && isMonerisConfigured();
+    const useStripe = data.paymentMethod === "stripe" && isStripeConfigured() && !useMoneris;
+
     const order = await Order.create({
       orderNumber,
       customer: {
@@ -194,10 +198,7 @@ export async function POST(request: NextRequest) {
           changedAt: new Date(),
         },
       ],
-      paymentMethod:
-        data.paymentMethod === "stripe" && isStripeConfigured()
-          ? "stripe"
-          : "manual_invoice",
+      paymentMethod: useMoneris ? "moneris" : useStripe ? "stripe" : "manual_invoice",
       customerNotes: data.customerNotes,
       accessToken,
     });
@@ -225,40 +226,69 @@ export async function POST(request: NextRequest) {
       settings.commerce?.orderConfirmationCopy ||
       "Your order total includes shipping and applicable taxes. We will contact you with payment instructions shortly.";
 
-    await sendEmail({
-      to: notifyEmail,
-      subject: `New order: ${orderNumber}`,
-      text: [
-        `Order: ${orderNumber}`,
-        `Customer: ${data.customer.firstName} ${data.customer.lastName}`,
-        `Email: ${data.customer.email}`,
-        `Subtotal: ${subtotal} ${cart.currency}`,
-        `Shipping: ${shippingCost} ${cart.currency}`,
-        `Tax: ${tax} ${cart.currency}`,
-        `Total: ${total} ${cart.currency}`,
-        `Payment: ${order.paymentMethod}`,
-        `View: ${orderUrl}`,
-      ].join("\n"),
-    });
+    if (useMoneris) {
+      await sendEmail({
+        to: notifyEmail,
+        subject: `Order awaiting payment: ${orderNumber}`,
+        text: [
+          `Order: ${orderNumber}`,
+          `Customer: ${data.customer.firstName} ${data.customer.lastName}`,
+          `Email: ${data.customer.email}`,
+          `Total: ${total} ${cart.currency}`,
+          `Status: Awaiting Moneris payment`,
+          `View: ${orderUrl}`,
+        ].join("\n"),
+      });
+    } else {
+      await sendEmail({
+        to: notifyEmail,
+        subject: `New order: ${orderNumber}`,
+        text: [
+          `Order: ${orderNumber}`,
+          `Customer: ${data.customer.firstName} ${data.customer.lastName}`,
+          `Email: ${data.customer.email}`,
+          `Subtotal: ${subtotal} ${cart.currency}`,
+          `Shipping: ${shippingCost} ${cart.currency}`,
+          `Tax: ${tax} ${cart.currency}`,
+          `Total: ${total} ${cart.currency}`,
+          `Payment: ${order.paymentMethod}`,
+          `View: ${orderUrl}`,
+        ].join("\n"),
+      });
 
-    await sendEmail({
-      to: data.customer.email,
-      subject: `Order confirmation: ${orderNumber}`,
-      text: [
-        `Thank you for your order, ${data.customer.firstName}!`,
-        `Order number: ${orderNumber}`,
-        `Subtotal: ${subtotal} ${cart.currency}`,
-        `Shipping: ${shippingCost} ${cart.currency}`,
-        `Tax: ${tax} ${cart.currency}`,
-        `Total: ${total} ${cart.currency}`,
-        confirmationCopy,
-        `Track your order: ${orderUrl}`,
-      ].join("\n\n"),
-    });
+      await sendEmail({
+        to: data.customer.email,
+        subject: `Order confirmation: ${orderNumber}`,
+        text: [
+          `Thank you for your order, ${data.customer.firstName}!`,
+          `Order number: ${orderNumber}`,
+          `Subtotal: ${subtotal} ${cart.currency}`,
+          `Shipping: ${shippingCost} ${cart.currency}`,
+          `Tax: ${tax} ${cart.currency}`,
+          `Total: ${total} ${cart.currency}`,
+          confirmationCopy,
+          `Track your order: ${orderUrl}`,
+        ].join("\n\n"),
+      });
+    }
 
     let stripeUrl: string | undefined;
+    let monerisTicket: string | undefined;
 
-    if (data.paymentMethod === "stripe" && isStripeConfigured()) {
+    if (useMoneris) {
+      monerisTicket = await monerisPreload({
+        txnTotal: total,
+        orderNo: orderNumber,
+        contactDetails: {
+          email: data.customer.email,
+          firstName: data.customer.firstName,
+          lastName: data.customer.lastName,
+          phone: data.customer.phone,
+        },
+      });
+      order.monerisTicket = monerisTicket;
+      await order.save();
+    } else if (useStripe) {
       const session = await createStripeCheckoutSession({
         lineItems: fixedItems.map((item) => ({
           name: item.productName,
@@ -284,6 +314,8 @@ export async function POST(request: NextRequest) {
       accessToken,
       orderUrl,
       paymentMethod: order.paymentMethod,
+      requiresPayment: !!monerisTicket || !!stripeUrl,
+      monerisTicket,
       stripeUrl,
       subtotal,
       shippingCost,

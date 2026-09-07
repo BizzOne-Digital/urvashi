@@ -1,12 +1,16 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/Button";
-import { cn } from "@/lib/utils";
+import { MonerisCheckout } from "@/components/payments/MonerisCheckout";
+import { cn, formatCurrency } from "@/lib/utils";
+
+type MonerisEnvironment = "qa" | "prod";
 
 const schema = z.object({
   firstName: z.string().min(1, "First name is required"),
@@ -14,6 +18,7 @@ const schema = z.object({
   email: z.string().email("Valid email required"),
   phone: z.string().min(7, "Phone number is required"),
   message: z.string().max(2000).optional(),
+  preferDesign: z.boolean(),
   consentGiven: z.literal(true, { errorMap: () => ({ message: "Consent is required" }) }),
   website: z.string().optional(),
 });
@@ -21,27 +26,42 @@ const schema = z.object({
 type FormData = z.infer<typeof schema>;
 
 interface CustomizeUploadFormProps {
+  designFee?: number;
+  monerisMode?: MonerisEnvironment;
   rightsConfirmationCopy?: string;
   className?: string;
 }
 
+interface PendingMonerisPayment {
+  ticket: string;
+  referenceNumber: string;
+}
+
 export function CustomizeUploadForm({
+  designFee = 5,
+  monerisMode = "qa",
   rightsConfirmationCopy = "I confirm that I have the right to use this artwork for printing purposes.",
   className,
 }: CustomizeUploadFormProps) {
+  const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [pendingPayment, setPendingPayment] = useState<PendingMonerisPayment | null>(null);
 
   const {
     register,
     handleSubmit,
     reset,
+    watch,
     formState: { errors },
   } = useForm<FormData>({
     resolver: zodResolver(schema),
+    defaultValues: { preferDesign: false },
   });
+
+  const preferDesign = watch("preferDesign");
 
   const fieldClass =
     "w-full rounded-sm border border-white/15 bg-[#12141c] px-4 py-3 text-sm text-pure-paper placeholder:text-chrome-mid focus:border-cyan/50 focus:outline-none focus:ring-2 focus:ring-cyan/25";
@@ -76,7 +96,7 @@ export function CustomizeUploadForm({
       const artworkId = uploadJson.artwork?.id || uploadJson.artwork?._id;
       if (!artworkId) throw new Error("Upload did not return artwork id");
 
-      const res = await fetch("/api/customize-request", {
+      const res = await fetch("/api/customize/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -86,12 +106,21 @@ export function CustomizeUploadForm({
           phone: data.phone,
           message: data.message,
           artworkAssetId: artworkId,
+          preferDesign: data.preferDesign,
           consentGiven: true,
           website: data.website,
         }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Failed to submit request");
+
+      if (json.requiresPayment && json.monerisTicket) {
+        setPendingPayment({
+          ticket: json.monerisTicket,
+          referenceNumber: json.referenceNumber,
+        });
+        return;
+      }
 
       toast.success(json.message || "Your request was sent successfully");
       reset();
@@ -106,8 +135,39 @@ export function CustomizeUploadForm({
     }
   };
 
+  const handleMonerisComplete = async (ticket: string) => {
+    if (!pendingPayment) return;
+
+    try {
+      const res = await fetch("/api/customize/confirm", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ticket,
+          referenceNumber: pendingPayment.referenceNumber,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Payment confirmation failed");
+
+      setPendingPayment(null);
+      reset();
+      setFile(null);
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+      setPreviewUrl(null);
+      router.push(`/customize/success?ref=${pendingPayment.referenceNumber}`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Payment confirmation failed");
+    }
+  };
+
+  const submitLabel = preferDesign
+    ? `Pay ${formatCurrency(designFee)} & submit`
+    : "Submit request";
+
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className={cn("space-y-5", className)} noValidate>
+    <>
+      <form onSubmit={handleSubmit(onSubmit)} className={cn("space-y-5", className)} noValidate>
       <input type="text" {...register("website")} className="hidden" tabIndex={-1} autoComplete="off" aria-hidden />
 
       <div className="grid gap-5 sm:grid-cols-2">
@@ -138,9 +198,19 @@ export function CustomizeUploadForm({
 
       <div>
         <label htmlFor="message" className="mb-1 block text-sm font-medium text-pure-paper">
-          What would you like printed? (optional)
+          What would you like printed? {preferDesign ? "" : "(optional)"}
         </label>
-        <textarea id="message" rows={3} {...register("message")} className={fieldClass} placeholder="Product type, quantity, colours, or any notes…" />
+        <textarea
+          id="message"
+          rows={3}
+          {...register("message")}
+          className={fieldClass}
+          placeholder={
+            preferDesign
+              ? "Describe colours, product type, text, or style you want in your design…"
+              : "Product type, quantity, colours, or any notes…"
+          }
+        />
       </div>
 
       <div>
@@ -163,15 +233,50 @@ export function CustomizeUploadForm({
         {!file && <p className="mt-1 text-xs text-chrome-mid">PNG, JPEG, WebP, or PDF — max 25MB</p>}
       </div>
 
+      <div className="rounded-lg border border-cyan/25 bg-cyan/5 p-4">
+        <label className="flex items-start gap-3 text-sm text-pure-paper">
+          <input type="checkbox" {...register("preferDesign")} className="mt-1 accent-cyan" />
+          <span>
+            <strong>I prefer your design</strong> — our team will create 2–3 design options based on your upload
+            <span className="text-cyan"> (+{formatCurrency(designFee)})</span>
+          </span>
+        </label>
+        <p className="mt-2 text-xs text-chrome-mid">
+          {preferDesign
+            ? "You pay the design fee now. After payment we review your images and email 2–3 options. No designs are sent until payment is received."
+            : "Upload your own artwork and we will contact you about printing — no design fee."}
+        </p>
+      </div>
+
       <label className="flex items-start gap-3 text-sm text-chrome-light">
         <input type="checkbox" value="true" {...register("consentGiven")} className="mt-1 accent-cyan" />
         <span>{rightsConfirmationCopy}</span>
       </label>
       {errors.consentGiven && <p className="text-xs text-deep-magenta">{errors.consentGiven.message}</p>}
 
+      {preferDesign && (
+        <p className="text-sm font-medium text-pure-paper">
+          Total today: <span className="text-cyan">{formatCurrency(designFee)} CAD</span> (design service fee)
+        </p>
+      )}
+
       <Button type="submit" disabled={submitting || uploading} className="w-full sm:w-auto">
-        {submitting || uploading ? "Sending…" : "Submit request"}
+        {submitting || uploading ? "Processing…" : submitLabel}
       </Button>
     </form>
+
+      {pendingPayment && (
+        <MonerisCheckout
+          ticket={pendingPayment.ticket}
+          mode={monerisMode}
+          onComplete={handleMonerisComplete}
+          onCancel={() => {
+            setPendingPayment(null);
+            toast.message("Payment cancelled. You can submit again when ready.");
+          }}
+          onError={(message) => toast.error(message)}
+        />
+      )}
+    </>
   );
 }

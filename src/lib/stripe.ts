@@ -8,6 +8,7 @@ export async function createStripeCheckoutSession(params: {
   customerEmail: string;
   successUrl: string;
   cancelUrl: string;
+  metadata?: Record<string, string>;
 }): Promise<{ url: string; sessionId: string } | null> {
   if (!isStripeConfigured()) return null;
 
@@ -29,7 +30,7 @@ export async function createStripeCheckoutSession(params: {
       success_url: params.successUrl,
       cancel_url: params.cancelUrl,
       customer_email: params.customerEmail,
-      metadata: { orderNumber: params.orderNumber },
+      metadata: { orderNumber: params.orderNumber, ...params.metadata },
     });
 
     if (!session.url) return null;
