@@ -3,8 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { toast } from "sonner";
-import { Button, buttonVariants } from "@/components/ui/Button";
+import { buttonVariants } from "@/components/ui/Button";
 import { getProductDisplayImages, DESIGN_HELP_SURCHARGE } from "@/lib/product-catalog";
 import { resolveImageSrc } from "@/lib/image-url";
 import { getProductPriceDisplay } from "@/lib/pricing";
@@ -39,52 +38,13 @@ interface ProductDetailExperienceProps {
 export function ProductDetailExperience({ product }: ProductDetailExperienceProps) {
   const allowsBlank = product.allowsBlankPurchase !== false;
   const allowsCustom = product.allowsCustomization !== false && product.customizer?.enabled !== false;
-  const [mode, setMode] = useState<ProductMode>(allowsBlank ? "blank" : "customized");
-  const [quantity, setQuantity] = useState(product.minQuantity || 1);
-  const [adding, setAdding] = useState(false);
+  const [mode, setMode] = useState<ProductMode>(allowsCustom ? "customized" : "blank");
 
   const { blank, customized } = getProductDisplayImages(product);
   const activeImage = mode === "blank" ? blank : customized;
-  const { display, isQuote } = getProductPriceDisplay(product, product.currency);
+  const { display } = getProductPriceDisplay(product, product.currency);
   const designFee = product.designHelpSurcharge ?? DESIGN_HELP_SURCHARGE;
   const customBase = product.price ?? 0;
-
-  const handleAddBlank = async () => {
-    if (isQuote) {
-      window.location.href = "/contact";
-      return;
-    }
-    setAdding(true);
-    try {
-      const res = await fetch("/api/cart", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "add",
-          item: {
-            productId: product._id,
-            productSlug: product.slug,
-            productName: `${product.name} (Blank)`,
-            sku: product.sku,
-            quantity,
-            pricingMode: product.pricingMode,
-            customization: { configSnapshot: { purchaseMode: "blank" } },
-          },
-        }),
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "Failed to add to cart");
-      window.dispatchEvent(new Event("cart-updated"));
-      toast.success("Blank item added to cart");
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to add to cart");
-    } finally {
-      setAdding(false);
-    }
-  };
-
-  const fieldClass =
-    "rounded-sm border border-white/15 bg-[#12141c] px-3 py-2 text-sm text-pure-paper focus:border-cyan/50 focus:outline-none focus:ring-2 focus:ring-cyan/25";
 
   return (
     <div className="grid gap-10 lg:grid-cols-2 lg:gap-12">
@@ -153,28 +113,22 @@ export function ProductDetailExperience({ product }: ProductDetailExperienceProp
         {mode === "blank" && allowsBlank && (
           <div className="space-y-4 border-t border-white/10 pt-5">
             <p className="text-sm !text-white">
-              Purchase a blank {product.name.toLowerCase()} ready for your own use or decoration.
-            </p>
-            <div>
-              <label htmlFor="quantity" className="mb-1 block text-sm font-medium !text-white">
-                Quantity
-              </label>
-              <input
-                id="quantity"
-                type="number"
-                min={product.minQuantity}
-                step={product.quantityStep}
-                value={quantity}
-                onChange={(e) => setQuantity(parseInt(e.target.value, 10) || product.minQuantity)}
-                className={cn(fieldClass, "w-24")}
-              />
-              {product.minQuantity > 1 && (
-                <p className="mt-1 text-xs text-muted">Minimum order: {product.minQuantity}</p>
+              Preview the blank version of this product.
+              {allowsCustom && (
+                <>
+                  {" "}
+                  Switch to{" "}
+                  <button
+                    type="button"
+                    onClick={() => setMode("customized")}
+                    className="font-semibold text-cyan hover:underline"
+                  >
+                    Customized
+                  </button>{" "}
+                  to order with your design.
+                </>
               )}
-            </div>
-            <Button onClick={handleAddBlank} disabled={adding}>
-              {isQuote ? "Contact for quote" : adding ? "Adding…" : "Add to cart"}
-            </Button>
+            </p>
           </div>
         )}
 

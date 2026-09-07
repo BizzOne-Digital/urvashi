@@ -19,7 +19,9 @@ const schema = z.object({
   phone: z.string().min(7, "Phone number is required"),
   message: z.string().max(2000).optional(),
   preferDesign: z.boolean(),
-  consentGiven: z.literal(true, { errorMap: () => ({ message: "Consent is required" }) }),
+  consentGiven: z
+    .boolean()
+    .refine((value) => value === true, { message: "Consent is required" }),
   website: z.string().optional(),
 });
 
@@ -58,7 +60,7 @@ export function CustomizeUploadForm({
     formState: { errors },
   } = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: { preferDesign: false },
+    defaultValues: { preferDesign: false, consentGiven: false },
   });
 
   const preferDesign = watch("preferDesign");
@@ -254,7 +256,7 @@ export function CustomizeUploadForm({
       </div>
 
       <label className="flex items-start gap-3 text-sm text-chrome-light">
-        <input type="checkbox" value="true" {...register("consentGiven")} className="mt-1 accent-cyan" />
+        <input type="checkbox" {...register("consentGiven")} className="mt-1 accent-cyan" />
         <span>{rightsConfirmationCopy}</span>
       </label>
       {errors.consentGiven && <p className="text-xs text-deep-magenta">{errors.consentGiven.message}</p>}
