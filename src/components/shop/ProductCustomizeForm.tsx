@@ -1,15 +1,13 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button, buttonVariants } from "@/components/ui/Button";
 import { Container } from "@/components/ui/Container";
 import { MonerisCheckout } from "@/components/payments/MonerisCheckout";
-import { DESIGN_HELP_SURCHARGE, getProductDisplayImages } from "@/lib/product-catalog";
-import { resolveImageSrc } from "@/lib/image-url";
+import { DESIGN_HELP_SURCHARGE } from "@/lib/product-catalog";
 import { formatCurrency } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 
@@ -43,13 +41,11 @@ interface PendingMonerisPayment {
 
 export function ProductCustomizeForm({ product, monerisMode = "qa" }: ProductCustomizeFormProps) {
   const router = useRouter();
-  const { blank, customized } = getProductDisplayImages(product);
-  const baseImage = resolveImageSrc(customized?.url || blank?.url);
-  const printArea = product.customizer?.printArea || { x: 12, y: 18, width: 76, height: 58 };
   const designFee = product.designHelpSurcharge ?? DESIGN_HELP_SURCHARGE;
   const basePrice = product.price ?? 0;
 
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [artworkId, setArtworkId] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -70,14 +66,7 @@ export function ProductCustomizeForm({ product, monerisMode = "qa" }: ProductCus
     [basePrice, form.quantity, designHelp, designFee]
   );
 
-  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (!form.rightsConfirmed) {
-      toast.error("Please confirm you have rights to use this artwork");
-      return;
-    }
-
+  const uploadArtwork = async (file: File) => {
     setUploading(true);
     try {
       const body = new FormData();
@@ -89,14 +78,34 @@ export function ProductCustomizeForm({ product, monerisMode = "qa" }: ProductCus
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Upload failed");
 
-      if (previewUrl) URL.revokeObjectURL(previewUrl);
-      setPreviewUrl(URL.createObjectURL(file));
       setArtworkId(json.artwork.id);
+      setPendingFile(null);
       toast.success("Artwork uploaded");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Upload failed");
     } finally {
       setUploading(false);
+    }
+  };
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    setPreviewUrl(URL.createObjectURL(file));
+    setArtworkId(null);
+    setPendingFile(file);
+
+    if (form.rightsConfirmed) {
+      await uploadArtwork(file);
+    }
+  };
+
+  const handleRightsChange = async (checked: boolean) => {
+    setForm((prev) => ({ ...prev, rightsConfirmed: checked }));
+    if (checked && pendingFile && !artworkId && !uploading) {
+      await uploadArtwork(pendingFile);
     }
   };
 
@@ -198,19 +207,17 @@ export function ProductCustomizeForm({ product, monerisMode = "qa" }: ProductCus
           </p>
 
           <div className="relative mt-8 aspect-square overflow-hidden rounded-xl border border-white/10 bg-[#0a0c14]">
-            <Image src={baseImage} alt={product.name} fill className="object-contain p-6" sizes="50vw" />
-            {previewUrl && (
-              <div
-                className="absolute overflow-hidden rounded-sm border border-dashed border-royal-blue/50 bg-white/10"
-                style={{
-                  left: `${printArea.x}%`,
-                  top: `${printArea.y}%`,
-                  width: `${printArea.width}%`,
-                  height: `${printArea.height}%`,
-                }}
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={previewUrl} alt="Your artwork preview" className="h-full w-full object-contain" />
+            {previewUrl ? (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img
+                src={previewUrl}
+                alt="Your artwork preview"
+                className="h-full w-full object-contain p-6"
+              />
+            ) : (
+              <div className="flex h-full min-h-[280px] flex-col items-center justify-center gap-2 p-8 text-center">
+                <p className="text-sm text-chrome-light">Your artwork preview will appear here</p>
+                <p className="text-xs text-chrome-mid">Upload an image using the form on the right</p>
               </div>
             )}
           </div>
@@ -286,7 +293,7 @@ export function ProductCustomizeForm({ product, monerisMode = "qa" }: ProductCus
           </label>
 
           <label className="flex items-start gap-2 text-sm text-chrome-light">
-            <input type="checkbox" checked={form.rightsConfirmed} onChange={(e) => setForm({ ...form, rightsConfirmed: e.target.checked })} className="mt-1 accent-cyan" />
+            <input type="checkbox" checked={form.rightsConfirmed} onChange={(e) => handleRightsChange(e.target.checked)} className="mt-1 accent-cyan" />
             I confirm I have the rights to use this artwork for printing.
           </label>
 
