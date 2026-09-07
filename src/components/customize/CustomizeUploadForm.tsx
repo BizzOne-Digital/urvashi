@@ -38,6 +38,7 @@ interface CustomizeUploadFormProps {
 interface PendingMonerisPayment {
   ticket: string;
   referenceNumber: string;
+  mode: MonerisEnvironment;
 }
 
 export function CustomizeUploadForm({
@@ -128,6 +129,7 @@ export function CustomizeUploadForm({
         setPendingPayment({
           ticket: json.monerisTicket,
           referenceNumber: json.referenceNumber,
+          mode: json.monerisMode === "prod" ? "prod" : monerisMode,
         });
         return;
       }
@@ -287,7 +289,7 @@ export function CustomizeUploadForm({
       {pendingPayment && (
         <MonerisCheckout
           ticket={pendingPayment.ticket}
-          mode={monerisMode}
+          mode={pendingPayment.mode}
           onComplete={handleMonerisComplete}
           onCancel={() => {
             setPendingPayment(null);

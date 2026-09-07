@@ -62,6 +62,7 @@ interface PendingMonerisPayment {
   ticket: string;
   orderNumber: string;
   accessToken: string;
+  mode: MonerisEnvironment;
 }
 
 export function CheckoutForm({
@@ -183,6 +184,7 @@ export function CheckoutForm({
           ticket: json.monerisTicket,
           orderNumber: json.orderNumber,
           accessToken: json.accessToken,
+          mode: json.monerisMode === "prod" ? "prod" : monerisMode,
         });
         return;
       }
@@ -439,7 +441,7 @@ export function CheckoutForm({
       {pendingPayment && (
         <MonerisCheckout
           ticket={pendingPayment.ticket}
-          mode={monerisMode}
+          mode={pendingPayment.mode}
           onComplete={handleMonerisComplete}
           onCancel={() => {
             setPendingPayment(null);

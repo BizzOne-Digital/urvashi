@@ -8,7 +8,7 @@ import { generateOrderNumber } from "@/lib/utils";
 import { getSettings } from "@/lib/settings";
 import { sendEmail } from "@/lib/email";
 import { createStripeCheckoutSession, isStripeConfigured } from "@/lib/stripe";
-import { isMonerisConfigured, monerisPreload } from "@/lib/moneris";
+import { getPublicMonerisMode, isMonerisConfigured, monerisPreload } from "@/lib/moneris";
 import { calculateOrderTotals } from "@/lib/order-totals";
 import Order from "@/models/Order";
 import CustomerArtwork from "@/models/CustomerArtwork";
@@ -316,6 +316,7 @@ export async function POST(request: NextRequest) {
       paymentMethod: order.paymentMethod,
       requiresPayment: !!monerisTicket || !!stripeUrl,
       monerisTicket,
+      monerisMode: monerisTicket ? getPublicMonerisMode() : undefined,
       stripeUrl,
       subtotal,
       shippingCost,

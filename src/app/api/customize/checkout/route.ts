@@ -5,7 +5,7 @@ import {
   createCustomizeSubmission,
   startCustomizeCheckout,
 } from "@/lib/customize-submission";
-import { isMonerisConfigured } from "@/lib/moneris";
+import { getPublicMonerisMode, isMonerisConfigured } from "@/lib/moneris";
 
 const checkoutSchema = z.object({
   firstName: z.string().min(1).max(100),
@@ -78,6 +78,7 @@ export async function POST(request: NextRequest) {
       success: true,
       requiresPayment: true,
       monerisTicket: ticket,
+      monerisMode: getPublicMonerisMode(),
       referenceNumber: submission.referenceNumber,
       baseFee: submission.baseFee,
       designFee: submission.designFee,

@@ -38,6 +38,7 @@ interface ProductCustomizeFormProps {
 interface PendingMonerisPayment {
   ticket: string;
   referenceNumber: string;
+  mode: MonerisEnvironment;
 }
 
 export function ProductCustomizeForm({ product, monerisMode = "qa" }: ProductCustomizeFormProps) {
@@ -140,6 +141,7 @@ export function ProductCustomizeForm({ product, monerisMode = "qa" }: ProductCus
         setPendingPayment({
           ticket: json.monerisTicket,
           referenceNumber: json.referenceNumber,
+          mode: json.monerisMode === "prod" ? "prod" : monerisMode,
         });
         return;
       }
@@ -309,7 +311,7 @@ export function ProductCustomizeForm({ product, monerisMode = "qa" }: ProductCus
       {pendingPayment && (
         <MonerisCheckout
           ticket={pendingPayment.ticket}
-          mode={monerisMode}
+          mode={pendingPayment.mode}
           onComplete={handleMonerisComplete}
           onCancel={() => {
             setPendingPayment(null);
