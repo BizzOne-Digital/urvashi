@@ -28,6 +28,7 @@ const schema = z.object({
 type FormData = z.infer<typeof schema>;
 
 interface CustomizeUploadFormProps {
+  baseFee?: number;
   designFee?: number;
   monerisMode?: MonerisEnvironment;
   rightsConfirmationCopy?: string;
@@ -40,6 +41,7 @@ interface PendingMonerisPayment {
 }
 
 export function CustomizeUploadForm({
+  baseFee = 19,
   designFee = 5,
   monerisMode = "qa",
   rightsConfirmationCopy = "I confirm that I have the right to use this artwork for printing purposes.",
@@ -64,6 +66,7 @@ export function CustomizeUploadForm({
   });
 
   const preferDesign = watch("preferDesign");
+  const totalToday = baseFee + (preferDesign ? designFee : 0);
 
   const fieldClass =
     "w-full rounded-sm border border-white/15 bg-[#12141c] px-4 py-3 text-sm text-pure-paper placeholder:text-chrome-mid focus:border-cyan/50 focus:outline-none focus:ring-2 focus:ring-cyan/25";
@@ -168,9 +171,7 @@ export function CustomizeUploadForm({
     }
   };
 
-  const submitLabel = preferDesign
-    ? `Pay ${formatCurrency(designFee)} & submit`
-    : "Submit request";
+  const submitLabel = submitting || uploading ? "Processing…" : `Pay ${formatCurrency(totalToday)} now`;
 
   return (
     <>
@@ -250,8 +251,8 @@ export function CustomizeUploadForm({
         </label>
         <p className="mt-2 text-xs text-chrome-mid">
           {preferDesign
-            ? "Click submit to pay securely first. After payment we email you a confirmation and send your requirements + image to our team."
-            : "Upload your own artwork and we will contact you about printing — no design fee."}
+            ? "Pay now through Moneris. After payment we email you a confirmation and send your requirements + image to our team."
+            : "Pay the customization fee now with your own upload. We will contact you about printing after payment."}
         </p>
       </div>
 
@@ -261,14 +262,25 @@ export function CustomizeUploadForm({
       </label>
       {errors.consentGiven && <p className="text-xs text-deep-magenta">{errors.consentGiven.message}</p>}
 
-      {preferDesign && (
-        <p className="text-sm font-medium text-pure-paper">
-          Total today: <span className="text-cyan">{formatCurrency(designFee)} CAD</span> (design service fee)
+      <div className="rounded-lg border border-white/10 bg-white/[0.03] p-4 text-sm text-pure-paper">
+        <p className="flex justify-between">
+          <span>Customization fee</span>
+          <span>{formatCurrency(baseFee)}</span>
         </p>
-      )}
+        {preferDesign && (
+          <p className="mt-2 flex justify-between text-cyan">
+            <span>Design service add-on</span>
+            <span>+{formatCurrency(designFee)}</span>
+          </p>
+        )}
+        <p className="mt-3 flex justify-between border-t border-white/10 pt-3 font-semibold">
+          <span>Total today</span>
+          <span className="text-cyan">{formatCurrency(totalToday)} CAD</span>
+        </p>
+      </div>
 
       <Button type="submit" disabled={submitting || uploading} className="w-full sm:w-auto">
-        {submitting || uploading ? "Processing…" : submitLabel}
+        {submitLabel}
       </Button>
     </form>
 

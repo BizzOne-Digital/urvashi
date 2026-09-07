@@ -7,10 +7,13 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button, buttonVariants } from "@/components/ui/Button";
 import { Container } from "@/components/ui/Container";
+import { MonerisCheckout } from "@/components/payments/MonerisCheckout";
 import { DESIGN_HELP_SURCHARGE, getProductDisplayImages } from "@/lib/product-catalog";
 import { resolveImageSrc } from "@/lib/image-url";
 import { formatCurrency } from "@/lib/utils";
 import { cn } from "@/lib/utils";
+
+type MonerisEnvironment = "qa" | "prod";
 
 interface ProductCustomizeFormProps {
   product: {
@@ -29,9 +32,15 @@ interface ProductCustomizeFormProps {
       previewDisclaimer?: string;
     };
   };
+  monerisMode?: MonerisEnvironment;
 }
 
-export function ProductCustomizeForm({ product }: ProductCustomizeFormProps) {
+interface PendingMonerisPayment {
+  ticket: string;
+  referenceNumber: string;
+}
+
+export function ProductCustomizeForm({ product, monerisMode = "qa" }: ProductCustomizeFormProps) {
   const router = useRouter();
   const { blank, customized } = getProductDisplayImages(product);
   const baseImage = resolveImageSrc(customized?.url || blank?.url);
@@ -44,6 +53,7 @@ export function ProductCustomizeForm({ product }: ProductCustomizeFormProps) {
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [designHelp, setDesignHelp] = useState(false);
+  const [pendingPayment, setPendingPayment] = useState<PendingMonerisPayment | null>(null);
   const [form, setForm] = useState({
     firstName: "",
     lastName: "",
@@ -99,37 +109,68 @@ export function ProductCustomizeForm({ product }: ProductCustomizeFormProps) {
       toast.error("Please confirm artwork rights");
       return;
     }
+    if (designHelp && !form.instructions.trim()) {
+      toast.error("Please describe what you want in your design");
+      return;
+    }
 
     setSubmitting(true);
     try {
-      const res = await fetch("/api/custom-orders", {
+      const res = await fetch("/api/customize/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          customer: {
-            firstName: form.firstName,
-            lastName: form.lastName,
-            email: form.email,
-            phone: form.phone || undefined,
-          },
+          firstName: form.firstName,
+          lastName: form.lastName,
+          email: form.email,
+          phone: form.phone,
+          message: form.instructions,
+          artworkAssetId: artworkId,
+          preferDesign: designHelp,
           productSlug: product.slug,
           productName: product.name,
           quantity: form.quantity,
-          instructions: form.instructions || undefined,
-          designHelp,
-          artworkAssetIds: [artworkId],
           consentGiven: true,
         }),
       });
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "Submission failed");
+      if (!res.ok) throw new Error(json.error || "Checkout failed");
 
-      toast.success(json.message || "Request submitted!");
-      router.push(`/shop/${product.slug}?submitted=1`);
+      if (json.monerisTicket) {
+        setPendingPayment({
+          ticket: json.monerisTicket,
+          referenceNumber: json.referenceNumber,
+        });
+        return;
+      }
+
+      throw new Error("Payment could not be started");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Submission failed");
+      toast.error(err instanceof Error ? err.message : "Checkout failed");
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleMonerisComplete = async (ticket: string) => {
+    if (!pendingPayment) return;
+
+    try {
+      const res = await fetch("/api/customize/confirm", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ticket,
+          referenceNumber: pendingPayment.referenceNumber,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Payment confirmation failed");
+
+      setPendingPayment(null);
+      router.push(`/customize/success?ref=${pendingPayment.referenceNumber}`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Payment confirmation failed");
     }
   };
 
@@ -138,13 +179,9 @@ export function ProductCustomizeForm({ product }: ProductCustomizeFormProps) {
   return (
     <Container className="max-w-5xl py-12">
       <nav className="mb-6 text-sm text-chrome-mid">
-        <Link href="/shop" className="hover:text-royal-blue">
-          Shop
-        </Link>
+        <Link href="/shop" className="hover:text-royal-blue">Shop</Link>
         <span className="mx-2">/</span>
-        <Link href={`/shop/${product.slug}`} className="hover:text-royal-blue">
-          {product.name}
-        </Link>
+        <Link href={`/shop/${product.slug}`} className="hover:text-royal-blue">{product.name}</Link>
         <span className="mx-2">/</span>
         <span className="text-ink-black">Customize</span>
       </nav>
@@ -153,8 +190,7 @@ export function ProductCustomizeForm({ product }: ProductCustomizeFormProps) {
         <div>
           <h1 className="heading-section">Customize your {product.name.toLowerCase()}</h1>
           <p className="mt-3 text-carbon">
-            Upload your image to preview it on the product, then submit your request. We will contact you to confirm
-            before production.
+            Upload your image, pay now through Moneris, and we will contact you to confirm before production.
           </p>
 
           <div className="relative mt-8 aspect-square overflow-hidden rounded-sm border border-chrome-light/40 bg-pure-paper">
@@ -175,8 +211,7 @@ export function ProductCustomizeForm({ product }: ProductCustomizeFormProps) {
             )}
           </div>
           <p className="mt-3 text-xs text-chrome-mid">
-            {product.customizer?.previewDisclaimer ||
-              "Preview is approximate. Final placement may vary slightly."}
+            {product.customizer?.previewDisclaimer || "Preview is approximate. Final placement may vary slightly."}
           </p>
         </div>
 
@@ -184,42 +219,22 @@ export function ProductCustomizeForm({ product }: ProductCustomizeFormProps) {
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <label className="mb-1 block text-sm font-medium">First name</label>
-              <input
-                required
-                className={fieldClass}
-                value={form.firstName}
-                onChange={(e) => setForm({ ...form, firstName: e.target.value })}
-              />
+              <input required className={fieldClass} value={form.firstName} onChange={(e) => setForm({ ...form, firstName: e.target.value })} />
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium">Last name</label>
-              <input
-                required
-                className={fieldClass}
-                value={form.lastName}
-                onChange={(e) => setForm({ ...form, lastName: e.target.value })}
-              />
+              <input required className={fieldClass} value={form.lastName} onChange={(e) => setForm({ ...form, lastName: e.target.value })} />
             </div>
           </div>
 
           <div>
             <label className="mb-1 block text-sm font-medium">Email</label>
-            <input
-              required
-              type="email"
-              className={fieldClass}
-              value={form.email}
-              onChange={(e) => setForm({ ...form, email: e.target.value })}
-            />
+            <input required type="email" className={fieldClass} value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium">Phone (optional)</label>
-            <input
-              className={fieldClass}
-              value={form.phone}
-              onChange={(e) => setForm({ ...form, phone: e.target.value })}
-            />
+            <label className="mb-1 block text-sm font-medium">Phone</label>
+            <input required className={fieldClass} value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
           </div>
 
           <div>
@@ -240,56 +255,56 @@ export function ProductCustomizeForm({ product }: ProductCustomizeFormProps) {
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium">Special instructions (optional)</label>
-            <textarea
-              className={fieldClass}
-              rows={3}
-              value={form.instructions}
-              onChange={(e) => setForm({ ...form, instructions: e.target.value })}
-            />
+            <label className="mb-1 block text-sm font-medium">
+              Special instructions {designHelp ? "(required)" : "(optional)"}
+            </label>
+            <textarea className={fieldClass} rows={3} value={form.instructions} onChange={(e) => setForm({ ...form, instructions: e.target.value })} />
           </div>
 
           <label className="flex items-start gap-3 rounded-sm border border-chrome-light/40 bg-pure-paper p-4 text-sm">
-            <input
-              type="checkbox"
-              checked={designHelp}
-              onChange={(e) => setDesignHelp(e.target.checked)}
-              className="mt-1"
-            />
+            <input type="checkbox" checked={designHelp} onChange={(e) => setDesignHelp(e.target.checked)} className="mt-1" />
             <span>
-              <strong>Would you like us to design for better results?</strong>
+              <strong>I prefer your design</strong>
               <br />
-              Our team can refine your artwork and send 3–4 design options (+{formatCurrency(designFee, product.currency)}).
-              Without design help, your upload is used as-is starting at {formatCurrency(basePrice, product.currency)} each.
+              Our team will create 2–3 design options (+{formatCurrency(designFee, product.currency)}).
             </span>
           </label>
 
           <label className="flex items-start gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={form.rightsConfirmed}
-              onChange={(e) => setForm({ ...form, rightsConfirmed: e.target.checked })}
-              className="mt-1"
-            />
+            <input type="checkbox" checked={form.rightsConfirmed} onChange={(e) => setForm({ ...form, rightsConfirmed: e.target.checked })} className="mt-1" />
             I confirm I have the rights to use this artwork for printing.
           </label>
 
           <div className="rounded-sm bg-royal-blue/5 p-4 text-sm">
-            <p className="font-semibold text-ink-black">Estimated starting total</p>
+            <p className="font-semibold text-ink-black">Total due today</p>
             <p className="text-2xl font-bold text-royal-blue">{formatCurrency(estimatedTotal, product.currency)}</p>
-            <p className="mt-1 text-chrome-mid">Final price confirmed after we review your request.</p>
+            <p className="mt-1 text-chrome-mid">
+              Includes customization starting at {formatCurrency(basePrice, product.currency)} each
+              {designHelp ? ` plus ${formatCurrency(designFee, product.currency)} design service` : ""}.
+            </p>
           </div>
 
           <div className="flex flex-wrap gap-3">
             <Button type="submit" disabled={submitting || uploading}>
-              {submitting ? "Submitting…" : "Submit customization request"}
+              {submitting || uploading ? "Processing…" : `Pay ${formatCurrency(estimatedTotal, product.currency)} now`}
             </Button>
-            <Link href={`/shop/${product.slug}`} className={buttonVariants("secondary")}>
-              Back to product
-            </Link>
+            <Link href={`/shop/${product.slug}`} className={buttonVariants("secondary")}>Back to product</Link>
           </div>
         </form>
       </div>
+
+      {pendingPayment && (
+        <MonerisCheckout
+          ticket={pendingPayment.ticket}
+          mode={monerisMode}
+          onComplete={handleMonerisComplete}
+          onCancel={() => {
+            setPendingPayment(null);
+            toast.message("Payment cancelled. You can try again when ready.");
+          }}
+          onError={(message) => toast.error(message)}
+        />
+      )}
     </Container>
   );
 }

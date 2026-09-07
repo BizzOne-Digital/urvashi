@@ -8,7 +8,7 @@ import { SectionHeader } from "@/components/ui/SectionHeader";
 import { PageCtaBanner } from "@/components/ui/PageCtaBanner";
 import { CustomizeUploadForm } from "@/components/customize/CustomizeUploadForm";
 import { getCachedSettings } from "@/lib/settings";
-import { getCustomizeDesignFee } from "@/lib/customize-submission";
+import { getCustomizeBaseFee, getCustomizeDesignFee } from "@/lib/customize-submission";
 import { getPublicMonerisMode } from "@/lib/moneris";
 
 export const metadata: Metadata = {
@@ -25,6 +25,7 @@ export default async function CustomizePage({ searchParams }: Props) {
   const settings = await getCachedSettings();
   const { cancelled } = await searchParams;
   const designFee = getCustomizeDesignFee();
+  const baseFee = getCustomizeBaseFee();
 
   return (
     <>
@@ -54,6 +55,7 @@ export default async function CustomizePage({ searchParams }: Props) {
 
           <div className="rounded-xl border border-white/10 bg-[#050508] p-5 shadow-[0_0_40px_rgba(6,94,229,0.12)] sm:p-8">
             <CustomizeUploadForm
+              baseFee={baseFee}
               designFee={designFee}
               monerisMode={getPublicMonerisMode()}
               rightsConfirmationCopy={settings.customization?.rightsConfirmationCopy}

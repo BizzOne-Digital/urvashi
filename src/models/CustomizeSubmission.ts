@@ -8,7 +8,11 @@ export interface ICustomizeSubmission extends Document {
   phone: string;
   message: string;
   artworkAssetId: string;
+  productSlug?: string;
+  productName?: string;
+  quantity?: number;
   preferDesign: boolean;
+  baseFee: number;
   designFee: number;
   totalPaid: number;
   currency: string;
@@ -30,7 +34,11 @@ const CustomizeSubmissionSchema = new Schema<ICustomizeSubmission>(
     phone: { type: String, required: true },
     message: { type: String, required: true },
     artworkAssetId: { type: String, required: true },
+    productSlug: String,
+    productName: String,
+    quantity: Number,
     preferDesign: { type: Boolean, default: false },
+    baseFee: { type: Number, default: 0 },
     designFee: { type: Number, default: 0 },
     totalPaid: { type: Number, default: 0 },
     currency: { type: String, default: "CAD" },

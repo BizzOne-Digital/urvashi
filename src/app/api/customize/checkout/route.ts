@@ -3,10 +3,9 @@ import { z } from "zod";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
 import {
   createCustomizeSubmission,
-  finalizeCustomizeSubmission,
-  getCustomizeDesignFee,
+  startCustomizeCheckout,
 } from "@/lib/customize-submission";
-import { isMonerisConfigured, monerisPreload } from "@/lib/moneris";
+import { isMonerisConfigured } from "@/lib/moneris";
 
 const checkoutSchema = z.object({
   firstName: z.string().min(1).max(100),
@@ -16,6 +15,9 @@ const checkoutSchema = z.object({
   message: z.string().max(2000).optional(),
   artworkAssetId: z.string().min(1),
   preferDesign: z.boolean().default(false),
+  productSlug: z.string().max(120).optional(),
+  productName: z.string().max(200).optional(),
+  quantity: z.coerce.number().int().positive().max(10000).optional(),
   consentGiven: z.literal(true, {
     errorMap: () => ({ message: "Consent is required" }),
   }),
@@ -48,17 +50,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (data.preferDesign && !isMonerisConfigured()) {
+    if (!isMonerisConfigured()) {
       return NextResponse.json(
         {
-          error:
-            "Online payment is not configured yet. Please contact us to request our design service.",
+          error: "Online payment is not configured yet. Please contact us to complete your order.",
         },
         { status: 503 }
       );
     }
 
-    const submission = await createCustomizeSubmission({
+    const { submission, totalDue } = await createCustomizeSubmission({
       firstName: data.firstName,
       lastName: data.lastName,
       email: data.email,
@@ -66,40 +67,22 @@ export async function POST(request: NextRequest) {
       message: data.message || "",
       artworkAssetId: data.artworkAssetId,
       preferDesign: data.preferDesign,
+      productSlug: data.productSlug,
+      productName: data.productName,
+      quantity: data.quantity,
     });
 
-    if (!data.preferDesign) {
-      await finalizeCustomizeSubmission(submission);
-      return NextResponse.json({
-        success: true,
-        message:
-          "Thank you! We received your upload and will contact you about printing your design.",
-        referenceNumber: submission.referenceNumber,
-      });
-    }
-
-    const designFee = getCustomizeDesignFee();
-    const ticket = await monerisPreload({
-      txnTotal: designFee,
-      orderNo: submission.referenceNumber,
-      contactDetails: {
-        email: data.email,
-        firstName: data.firstName,
-        lastName: data.lastName,
-        phone: data.phone,
-      },
-    });
-
-    submission.monerisTicket = ticket;
-    await submission.save();
+    const ticket = await startCustomizeCheckout(submission, totalDue);
 
     return NextResponse.json({
       success: true,
       requiresPayment: true,
       monerisTicket: ticket,
       referenceNumber: submission.referenceNumber,
-      amount: designFee,
-      currency: "CAD",
+      baseFee: submission.baseFee,
+      designFee: submission.designFee,
+      amount: totalDue,
+      currency: submission.currency,
     });
   } catch (error) {
     console.error("Customize checkout error:", error);

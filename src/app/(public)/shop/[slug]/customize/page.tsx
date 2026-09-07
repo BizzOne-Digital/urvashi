@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { getProductBySlug } from "@/lib/public-data";
 import { ProductCustomizeForm } from "@/components/shop/ProductCustomizeForm";
+import { getPublicMonerisMode } from "@/lib/moneris";
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -28,6 +29,7 @@ export default async function ProductCustomizePage({ params }: Props) {
         images: product.images,
         customizer: product.customizer,
       }}
+      monerisMode={getPublicMonerisMode()}
     />
   );
 }
