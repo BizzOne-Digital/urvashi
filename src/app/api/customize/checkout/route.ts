@@ -41,6 +41,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true, message: "Thank you! We received your request." });
     }
 
+    if (data.preferDesign && !data.message?.trim()) {
+      return NextResponse.json(
+        { error: "Please describe what you want in your design before paying." },
+        { status: 400 }
+      );
+    }
+
     if (data.preferDesign && !isMonerisConfigured()) {
       return NextResponse.json(
         {

@@ -80,6 +80,11 @@ export function CustomizeUploadForm({
       return;
     }
 
+    if (data.preferDesign && !data.message?.trim()) {
+      toast.error("Please describe what you want in your design");
+      return;
+    }
+
     setSubmitting(true);
     try {
       setUploading(true);
@@ -198,7 +203,7 @@ export function CustomizeUploadForm({
 
       <div>
         <label htmlFor="message" className="mb-1 block text-sm font-medium text-pure-paper">
-          What would you like printed? {preferDesign ? "" : "(optional)"}
+          What would you like printed? {preferDesign ? "(required)" : "(optional)"}
         </label>
         <textarea
           id="message"
@@ -243,7 +248,7 @@ export function CustomizeUploadForm({
         </label>
         <p className="mt-2 text-xs text-chrome-mid">
           {preferDesign
-            ? "You pay the design fee now. After payment we review your images and email 2–3 options. No designs are sent until payment is received."
+            ? "Click submit to pay securely first. After payment we email you a confirmation and send your requirements + image to our team."
             : "Upload your own artwork and we will contact you about printing — no design fee."}
         </p>
       </div>

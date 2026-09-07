@@ -88,10 +88,15 @@ export async function finalizeCustomizeSubmission(
       ? `Amount paid: ${formatCurrency(submission.totalPaid, submission.currency)}`
       : "No design fee charged.",
     "",
-    `Customer notes: ${submission.message}`,
+    "Customer requirements:",
+    submission.message,
     "",
     submission.preferDesign
-      ? "Action: Review uploaded images and email the customer 2–3 design options."
+      ? "The customer's uploaded image is attached to this email."
+      : "See attached upload if included.",
+    "",
+    submission.preferDesign
+      ? "Action: Review the image and requirements, then email the customer 2–3 design options."
       : "Action: Review the upload and contact the customer about their order.",
     "",
     `Artwork ID: ${submission.artworkAssetId}`,
@@ -113,6 +118,44 @@ export async function finalizeCustomizeSubmission(
         ]
       : undefined,
   });
+
+  if (submission.preferDesign) {
+    await sendEmail({
+      to: submission.email,
+      subject: `Payment confirmed — design request ${submission.referenceNumber}`,
+      text: [
+        `Hi ${submission.firstName},`,
+        "",
+        `Thank you! Your payment of ${formatCurrency(submission.totalPaid, submission.currency)} for our design service was received.`,
+        `Reference: ${submission.referenceNumber}`,
+        "",
+        "We will review your upload and email you 2–3 design options shortly.",
+        "Reply with your favourite choice when you're ready to move forward.",
+        "",
+        "If you have any questions, feel free to contact us.",
+      ].join("\n"),
+      html: [
+        `<p>Hi ${submission.firstName},</p>`,
+        `<p>Thank you! Your payment of <strong>${formatCurrency(submission.totalPaid, submission.currency)}</strong> for our design service was received.</p>`,
+        `<p>Reference: <strong>${submission.referenceNumber}</strong></p>`,
+        `<p>We will review your upload and email you 2–3 design options shortly. Reply with your favourite choice when you're ready to move forward.</p>`,
+        `<p>If you have any questions, feel free to contact us.</p>`,
+      ].join(""),
+    });
+  } else {
+    await sendEmail({
+      to: submission.email,
+      subject: `We received your custom upload — ${submission.referenceNumber}`,
+      text: [
+        `Hi ${submission.firstName},`,
+        "",
+        "Thank you! We received your artwork and will contact you about printing your design.",
+        `Reference: ${submission.referenceNumber}`,
+        "",
+        "If you have any questions, feel free to contact us.",
+      ].join("\n"),
+    });
+  }
 
   return { contactMessageId: contactMessage._id.toString() };
 }
