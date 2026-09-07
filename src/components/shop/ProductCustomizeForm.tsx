@@ -174,26 +174,28 @@ export function ProductCustomizeForm({ product, monerisMode = "qa" }: ProductCus
     }
   };
 
-  const fieldClass = "w-full rounded-sm border border-chrome-light bg-pure-paper px-3 py-2 text-sm";
+  const fieldClass =
+    "w-full rounded-sm border border-white/15 bg-[#12141c] px-3 py-2 text-sm text-pure-paper placeholder:text-chrome-mid focus:border-cyan/50 focus:outline-none focus:ring-2 focus:ring-cyan/25";
 
   return (
-    <Container className="max-w-5xl py-12">
+    <section className="border-b border-white/10 bg-[#050508] py-12 lg:py-16">
+    <Container className="max-w-5xl">
       <nav className="mb-6 text-sm text-chrome-mid">
-        <Link href="/shop" className="hover:text-royal-blue">Shop</Link>
+        <Link href="/shop" className="text-chrome-light hover:text-cyan">Shop</Link>
         <span className="mx-2">/</span>
-        <Link href={`/shop/${product.slug}`} className="hover:text-royal-blue">{product.name}</Link>
+        <Link href={`/shop/${product.slug}`} className="text-chrome-light hover:text-cyan">{product.name}</Link>
         <span className="mx-2">/</span>
-        <span className="text-ink-black">Customize</span>
+        <span className="text-pure-paper">Customize</span>
       </nav>
 
       <div className="grid gap-10 lg:grid-cols-2">
         <div>
-          <h1 className="heading-section">Customize your {product.name.toLowerCase()}</h1>
-          <p className="mt-3 text-carbon">
+          <h1 className="heading-section text-pure-paper">Customize your {product.name.toLowerCase()}</h1>
+          <p className="mt-3 text-chrome-light">
             Upload your image, pay now through Moneris, and we will contact you to confirm before production.
           </p>
 
-          <div className="relative mt-8 aspect-square overflow-hidden rounded-sm border border-chrome-light/40 bg-pure-paper">
+          <div className="relative mt-8 aspect-square overflow-hidden rounded-xl border border-white/10 bg-[#0a0c14]">
             <Image src={baseImage} alt={product.name} fill className="object-contain p-6" sizes="50vw" />
             {previewUrl && (
               <div
@@ -215,30 +217,33 @@ export function ProductCustomizeForm({ product, monerisMode = "qa" }: ProductCus
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="card-vibrant space-y-5 p-6">
+        <form
+          onSubmit={handleSubmit}
+          className="space-y-5 rounded-xl border border-white/10 bg-[#0a0c14] p-6 shadow-[0_0_40px_rgba(6,94,229,0.12)]"
+        >
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <label className="mb-1 block text-sm font-medium">First name</label>
+              <label className="mb-1 block text-sm font-medium text-pure-paper">First name</label>
               <input required className={fieldClass} value={form.firstName} onChange={(e) => setForm({ ...form, firstName: e.target.value })} />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium">Last name</label>
+              <label className="mb-1 block text-sm font-medium text-pure-paper">Last name</label>
               <input required className={fieldClass} value={form.lastName} onChange={(e) => setForm({ ...form, lastName: e.target.value })} />
             </div>
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium">Email</label>
+            <label className="mb-1 block text-sm font-medium text-pure-paper">Email</label>
             <input required type="email" className={fieldClass} value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium">Phone</label>
+            <label className="mb-1 block text-sm font-medium text-pure-paper">Phone</label>
             <input required className={fieldClass} value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium">Quantity</label>
+            <label className="mb-1 block text-sm font-medium text-pure-paper">Quantity</label>
             <input
               type="number"
               min={product.minQuantity}
@@ -249,35 +254,43 @@ export function ProductCustomizeForm({ product, monerisMode = "qa" }: ProductCus
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium">Upload your artwork</label>
-            <input type="file" accept="image/jpeg,image/png,application/pdf" onChange={handleUpload} disabled={uploading} />
+            <label className="mb-1 block text-sm font-medium text-pure-paper">Upload your artwork</label>
+            <input
+              type="file"
+              accept="image/jpeg,image/png,application/pdf"
+              onChange={handleUpload}
+              disabled={uploading}
+              className="block w-full text-sm text-chrome-light file:mr-3 file:rounded-sm file:border-0 file:bg-cyan/20 file:px-3 file:py-2 file:text-xs file:font-semibold file:text-cyan hover:file:bg-cyan/30"
+            />
             {uploading && <p className="mt-1 text-xs text-chrome-mid">Uploading…</p>}
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium">
+            <label className="mb-1 block text-sm font-medium text-pure-paper">
               Special instructions {designHelp ? "(required)" : "(optional)"}
             </label>
             <textarea className={fieldClass} rows={3} value={form.instructions} onChange={(e) => setForm({ ...form, instructions: e.target.value })} />
           </div>
 
-          <label className="flex items-start gap-3 rounded-sm border border-chrome-light/40 bg-pure-paper p-4 text-sm">
-            <input type="checkbox" checked={designHelp} onChange={(e) => setDesignHelp(e.target.checked)} className="mt-1" />
+          <label className="flex items-start gap-3 rounded-lg border border-cyan/25 bg-cyan/5 p-4 text-sm text-pure-paper">
+            <input type="checkbox" checked={designHelp} onChange={(e) => setDesignHelp(e.target.checked)} className="mt-1 accent-cyan" />
             <span>
               <strong>I prefer your design</strong>
               <br />
-              Our team will create 2–3 design options (+{formatCurrency(designFee, product.currency)}).
+              <span className="text-chrome-light">
+                Our team will create 2–3 design options (+{formatCurrency(designFee, product.currency)}).
+              </span>
             </span>
           </label>
 
-          <label className="flex items-start gap-2 text-sm">
-            <input type="checkbox" checked={form.rightsConfirmed} onChange={(e) => setForm({ ...form, rightsConfirmed: e.target.checked })} className="mt-1" />
+          <label className="flex items-start gap-2 text-sm text-chrome-light">
+            <input type="checkbox" checked={form.rightsConfirmed} onChange={(e) => setForm({ ...form, rightsConfirmed: e.target.checked })} className="mt-1 accent-cyan" />
             I confirm I have the rights to use this artwork for printing.
           </label>
 
-          <div className="rounded-sm bg-royal-blue/5 p-4 text-sm">
-            <p className="font-semibold text-ink-black">Total due today</p>
-            <p className="text-2xl font-bold text-royal-blue">{formatCurrency(estimatedTotal, product.currency)}</p>
+          <div className="rounded-lg border border-white/10 bg-white/[0.03] p-4 text-sm">
+            <p className="font-semibold text-pure-paper">Total due today</p>
+            <p className="text-2xl font-bold text-cyan">{formatCurrency(estimatedTotal, product.currency)}</p>
             <p className="mt-1 text-chrome-mid">
               Includes customization starting at {formatCurrency(basePrice, product.currency)} each
               {designHelp ? ` plus ${formatCurrency(designFee, product.currency)} design service` : ""}.
@@ -306,5 +319,6 @@ export function ProductCustomizeForm({ product, monerisMode = "qa" }: ProductCus
         />
       )}
     </Container>
+    </section>
   );
 }
