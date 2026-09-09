@@ -8,6 +8,14 @@ import { z } from "zod";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/Button";
 import { MonerisCheckout } from "@/components/payments/MonerisCheckout";
+import {
+  ArtworkMultiUpload,
+  clearArtworkItems,
+  getUploadedArtworkIds,
+  type LocalArtworkFile,
+  uploadArtworkItemsOnSubmit,
+  uploadPendingArtworkItems,
+} from "@/components/customize/ArtworkMultiUpload";
 import { cn, formatCurrency } from "@/lib/utils";
 
 type MonerisEnvironment = "qa" | "prod";
@@ -51,8 +59,7 @@ export function CustomizeUploadForm({
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [file, setFile] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [artworkItems, setArtworkItems] = useState<LocalArtworkFile[]>([]);
   const [pendingPayment, setPendingPayment] = useState<PendingMonerisPayment | null>(null);
 
   const {
@@ -60,6 +67,7 @@ export function CustomizeUploadForm({
     handleSubmit,
     reset,
     watch,
+    setValue,
     formState: { errors },
   } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -67,22 +75,16 @@ export function CustomizeUploadForm({
   });
 
   const preferDesign = watch("preferDesign");
+  const consentGiven = watch("consentGiven");
+  const message = watch("message");
   const totalToday = baseFee + (preferDesign ? designFee : 0);
 
   const fieldClass =
     "w-full rounded-sm border border-white/15 bg-[#12141c] px-4 py-3 text-sm text-pure-paper placeholder:text-chrome-mid focus:border-cyan/50 focus:outline-none focus:ring-2 focus:ring-cyan/25";
 
-  const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selected = e.target.files?.[0];
-    if (!selected) return;
-    if (previewUrl) URL.revokeObjectURL(previewUrl);
-    setFile(selected);
-    setPreviewUrl(URL.createObjectURL(selected));
-  };
-
   const onSubmit = async (data: FormData) => {
-    if (!file) {
-      toast.error("Please upload your picture or artwork");
+    if (!artworkItems.length) {
+      toast.error("Please upload at least one picture or artwork file");
       return;
     }
 
@@ -94,18 +96,12 @@ export function CustomizeUploadForm({
     setSubmitting(true);
     try {
       setUploading(true);
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("rightsConfirmed", "true");
-      if (data.message) formData.append("customerNote", data.message);
-
-      const uploadRes = await fetch("/api/upload/artwork", { method: "POST", body: formData });
-      const uploadJson = await uploadRes.json();
-      if (!uploadRes.ok) throw new Error(uploadJson.error || "Upload failed");
+      const { artworkIds } = await uploadArtworkItemsOnSubmit(
+        artworkItems,
+        data.consentGiven,
+        data.message
+      );
       setUploading(false);
-
-      const artworkId = uploadJson.artwork?.id || uploadJson.artwork?._id;
-      if (!artworkId) throw new Error("Upload did not return artwork id");
 
       const res = await fetch("/api/customize/checkout", {
         method: "POST",
@@ -116,7 +112,7 @@ export function CustomizeUploadForm({
           email: data.email,
           phone: data.phone,
           message: data.message,
-          artworkAssetId: artworkId,
+          artworkAssetIds: artworkIds,
           preferDesign: data.preferDesign,
           consentGiven: true,
           website: data.website,
@@ -136,9 +132,8 @@ export function CustomizeUploadForm({
 
       toast.success(json.message || "Your request was sent successfully");
       reset();
-      setFile(null);
-      if (previewUrl) URL.revokeObjectURL(previewUrl);
-      setPreviewUrl(null);
+      clearArtworkItems(artworkItems);
+      setArtworkItems([]);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to submit request");
     } finally {
@@ -164,12 +159,27 @@ export function CustomizeUploadForm({
 
       setPendingPayment(null);
       reset();
-      setFile(null);
-      if (previewUrl) URL.revokeObjectURL(previewUrl);
-      setPreviewUrl(null);
+      clearArtworkItems(artworkItems);
+      setArtworkItems([]);
       router.push(`/customize/success?ref=${pendingPayment.referenceNumber}`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Payment confirmation failed");
+    }
+  };
+
+  const handleConsentChange = async (checked: boolean) => {
+    setValue("consentGiven", checked, { shouldValidate: true });
+    if (!checked || !artworkItems.length) return;
+
+    setUploading(true);
+    try {
+      const uploaded = await uploadPendingArtworkItems(artworkItems, message);
+      setArtworkItems(uploaded);
+      if (getUploadedArtworkIds(uploaded).length) {
+        toast.success("Artwork uploaded");
+      }
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -218,30 +228,17 @@ export function CustomizeUploadForm({
           placeholder={
             preferDesign
               ? "Describe colours, product type, text, or style you want in your design…"
-              : "Product type, quantity, colours, or any notes…"
+              : "Product type, quantity, colours, collage layout, or any notes…"
           }
         />
       </div>
 
-      <div>
-        <label htmlFor="artwork" className="mb-2 block text-sm font-medium text-pure-paper">
-          Upload your picture / artwork
-        </label>
-        <input
-          id="artwork"
-          type="file"
-          accept="image/png,image/jpeg,image/webp,application/pdf"
-          onChange={onFileChange}
-          className="block w-full text-sm text-chrome-light file:mr-3 file:rounded-sm file:border-0 file:bg-cyan/20 file:px-3 file:py-2 file:text-xs file:font-semibold file:text-cyan hover:file:bg-cyan/30"
-        />
-        {previewUrl && (
-          <div className="mt-4 overflow-hidden rounded-lg border border-white/10 bg-[#0a0c14]">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={previewUrl} alt="Your upload preview" className="mx-auto max-h-64 w-full object-contain p-4" />
-          </div>
-        )}
-        {!file && <p className="mt-1 text-xs text-chrome-mid">PNG, JPEG, WebP, or PDF — max 25MB</p>}
-      </div>
+      <ArtworkMultiUpload
+        items={artworkItems}
+        onChange={setArtworkItems}
+        rightsConfirmed={consentGiven}
+        customerNote={message}
+      />
 
       <div className="rounded-lg border border-cyan/25 bg-cyan/5 p-4">
         <label className="flex items-start gap-3 text-sm text-pure-paper">
@@ -253,13 +250,18 @@ export function CustomizeUploadForm({
         </label>
         <p className="mt-2 text-xs text-chrome-mid">
           {preferDesign
-            ? "Pay now through Moneris. After payment we email you a confirmation and send your requirements + image to our team."
+            ? "Pay now through Moneris. After payment we email you a confirmation and send your requirements + images to our team."
             : "Pay the customization fee now with your own upload. We will contact you about printing after payment."}
         </p>
       </div>
 
       <label className="flex items-start gap-3 text-sm text-chrome-light">
-        <input type="checkbox" {...register("consentGiven")} className="mt-1 accent-cyan" />
+        <input
+          type="checkbox"
+          checked={consentGiven}
+          onChange={(e) => handleConsentChange(e.target.checked)}
+          className="mt-1 accent-cyan"
+        />
         <span>{rightsConfirmationCopy}</span>
       </label>
       {errors.consentGiven && <p className="text-xs text-deep-magenta">{errors.consentGiven.message}</p>}

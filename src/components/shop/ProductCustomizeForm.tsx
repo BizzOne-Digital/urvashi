@@ -7,6 +7,13 @@ import { toast } from "sonner";
 import { Button, buttonVariants } from "@/components/ui/Button";
 import { Container } from "@/components/ui/Container";
 import { MonerisCheckout } from "@/components/payments/MonerisCheckout";
+import {
+  ArtworkMultiUpload,
+  getUploadedArtworkIds,
+  type LocalArtworkFile,
+  uploadArtworkItemsOnSubmit,
+  uploadPendingArtworkItems,
+} from "@/components/customize/ArtworkMultiUpload";
 import { DESIGN_HELP_SURCHARGE } from "@/lib/product-catalog";
 import { formatCurrency } from "@/lib/utils";
 import { cn } from "@/lib/utils";
@@ -44,9 +51,7 @@ export function ProductCustomizeForm({ product, monerisMode = "qa" }: ProductCus
   const designFee = product.designHelpSurcharge ?? DESIGN_HELP_SURCHARGE;
   const basePrice = product.price ?? 0;
 
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [pendingFile, setPendingFile] = useState<File | null>(null);
-  const [artworkId, setArtworkId] = useState<string | null>(null);
+  const [artworkItems, setArtworkItems] = useState<LocalArtworkFile[]>([]);
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [designHelp, setDesignHelp] = useState(false);
@@ -66,53 +71,32 @@ export function ProductCustomizeForm({ product, monerisMode = "qa" }: ProductCus
     [basePrice, form.quantity, designHelp, designFee]
   );
 
-  const uploadArtwork = async (file: File) => {
+  const removeArtwork = (key: string) => {
+    const target = artworkItems.find((item) => item.key === key);
+    if (target) URL.revokeObjectURL(target.previewUrl);
+    setArtworkItems(artworkItems.filter((item) => item.key !== key));
+  };
+
+  const handleRightsChange = async (checked: boolean) => {
+    setForm((prev) => ({ ...prev, rightsConfirmed: checked }));
+    if (!checked || !artworkItems.length) return;
+
     setUploading(true);
     try {
-      const body = new FormData();
-      body.append("file", file);
-      body.append("rightsConfirmed", "true");
-      body.append("customerNote", form.instructions);
-
-      const res = await fetch("/api/upload/artwork", { method: "POST", body });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "Upload failed");
-
-      setArtworkId(json.artwork.id);
-      setPendingFile(null);
-      toast.success("Artwork uploaded");
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Upload failed");
+      const uploaded = await uploadPendingArtworkItems(artworkItems, form.instructions);
+      setArtworkItems(uploaded);
+      if (getUploadedArtworkIds(uploaded).length) {
+        toast.success("Artwork uploaded");
+      }
     } finally {
       setUploading(false);
     }
   };
 
-  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (previewUrl) URL.revokeObjectURL(previewUrl);
-    setPreviewUrl(URL.createObjectURL(file));
-    setArtworkId(null);
-    setPendingFile(file);
-
-    if (form.rightsConfirmed) {
-      await uploadArtwork(file);
-    }
-  };
-
-  const handleRightsChange = async (checked: boolean) => {
-    setForm((prev) => ({ ...prev, rightsConfirmed: checked }));
-    if (checked && pendingFile && !artworkId && !uploading) {
-      await uploadArtwork(pendingFile);
-    }
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!artworkId) {
-      toast.error("Please upload your artwork first");
+    if (!artworkItems.length) {
+      toast.error("Please upload at least one artwork file");
       return;
     }
     if (!form.rightsConfirmed) {
@@ -126,6 +110,12 @@ export function ProductCustomizeForm({ product, monerisMode = "qa" }: ProductCus
 
     setSubmitting(true);
     try {
+      const { artworkIds } = await uploadArtworkItemsOnSubmit(
+        artworkItems,
+        form.rightsConfirmed,
+        form.instructions
+      );
+
       const res = await fetch("/api/customize/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -135,7 +125,7 @@ export function ProductCustomizeForm({ product, monerisMode = "qa" }: ProductCus
           email: form.email,
           phone: form.phone,
           message: form.instructions,
-          artworkAssetId: artworkId,
+          artworkAssetIds: artworkIds,
           preferDesign: designHelp,
           productSlug: product.slug,
           productName: product.name,
@@ -203,21 +193,41 @@ export function ProductCustomizeForm({ product, monerisMode = "qa" }: ProductCus
         <div>
           <h1 className="heading-section text-pure-paper">Customize your {product.name.toLowerCase()}</h1>
           <p className="mt-3 text-chrome-light">
-            Upload your image, pay now through Moneris, and we will contact you to confirm before production.
+            Upload your images (add multiple for collages), pay now through Moneris, and we will contact you to confirm before production.
           </p>
 
-          <div className="relative mt-8 aspect-square overflow-hidden rounded-xl border border-white/10 bg-[#0a0c14]">
-            {previewUrl ? (
-              /* eslint-disable-next-line @next/next/no-img-element */
-              <img
-                src={previewUrl}
-                alt="Your artwork preview"
-                className="h-full w-full object-contain p-6"
-              />
+          <div className="relative mt-8 min-h-[280px] overflow-hidden rounded-xl border border-white/10 bg-[#0a0c14] p-4">
+            {artworkItems.length > 0 ? (
+              <div className="grid grid-cols-2 gap-3">
+                {artworkItems.map((item) => (
+                  <div key={item.key} className="relative overflow-hidden rounded-lg border border-white/10 bg-[#050508]">
+                    {item.file.type.startsWith("image/") ? (
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      <img
+                        src={item.previewUrl}
+                        alt={item.file.name}
+                        className="aspect-square w-full object-contain p-3"
+                      />
+                    ) : (
+                      <div className="flex aspect-square items-center justify-center p-3 text-center text-xs text-chrome-light">
+                        {item.file.name}
+                      </div>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => removeArtwork(item.key)}
+                      className="absolute right-1 top-1 rounded bg-black/70 px-1.5 py-0.5 text-[10px] text-pure-paper hover:bg-black"
+                      aria-label={`Remove ${item.file.name}`}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ))}
+              </div>
             ) : (
-              <div className="flex h-full min-h-[280px] flex-col items-center justify-center gap-2 p-8 text-center">
+              <div className="flex h-full min-h-[240px] flex-col items-center justify-center gap-2 p-8 text-center">
                 <p className="text-sm text-chrome-light">Your artwork preview will appear here</p>
-                <p className="text-xs text-chrome-mid">Upload an image using the form on the right</p>
+                <p className="text-xs text-chrome-mid">Upload one or more images using the form on the right</p>
               </div>
             )}
           </div>
@@ -262,17 +272,16 @@ export function ProductCustomizeForm({ product, monerisMode = "qa" }: ProductCus
             />
           </div>
 
-          <div>
-            <label className="mb-1 block text-sm font-medium text-pure-paper">Upload your artwork</label>
-            <input
-              type="file"
-              accept="image/jpeg,image/png,application/pdf"
-              onChange={handleUpload}
-              disabled={uploading}
-              className="block w-full text-sm text-chrome-light file:mr-3 file:rounded-sm file:border-0 file:bg-cyan/20 file:px-3 file:py-2 file:text-xs file:font-semibold file:text-cyan hover:file:bg-cyan/30"
-            />
-            {uploading && <p className="mt-1 text-xs text-chrome-mid">Uploading…</p>}
-          </div>
+          <ArtworkMultiUpload
+            items={artworkItems}
+            onChange={setArtworkItems}
+            rightsConfirmed={form.rightsConfirmed}
+            customerNote={form.instructions}
+            label="Upload your artwork"
+            hint="PNG, JPEG, or PDF — add multiple images for collages."
+            hidePreviews
+          />
+          {uploading && <p className="text-xs text-chrome-mid">Uploading…</p>}
 
           <div>
             <label className="mb-1 block text-sm font-medium text-pure-paper">

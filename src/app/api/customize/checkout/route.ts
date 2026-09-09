@@ -6,23 +6,30 @@ import {
   startCustomizeCheckout,
 } from "@/lib/customize-submission";
 import { getPublicMonerisMode, isMonerisConfigured } from "@/lib/moneris";
+import { MAX_ARTWORK_FILES } from "@/lib/artwork-upload";
 
-const checkoutSchema = z.object({
-  firstName: z.string().min(1).max(100),
-  lastName: z.string().min(1).max(100),
-  email: z.string().email().max(255),
-  phone: z.string().min(7).max(30),
-  message: z.string().max(2000).optional(),
-  artworkAssetId: z.string().min(1),
-  preferDesign: z.boolean().default(false),
-  productSlug: z.string().max(120).optional(),
-  productName: z.string().max(200).optional(),
-  quantity: z.coerce.number().int().positive().max(10000).optional(),
-  consentGiven: z.literal(true, {
-    errorMap: () => ({ message: "Consent is required" }),
-  }),
-  website: z.string().optional(),
-});
+const checkoutSchema = z
+  .object({
+    firstName: z.string().min(1).max(100),
+    lastName: z.string().min(1).max(100),
+    email: z.string().email().max(255),
+    phone: z.string().min(7).max(30),
+    message: z.string().max(2000).optional(),
+    artworkAssetId: z.string().min(1).optional(),
+    artworkAssetIds: z.array(z.string().min(1)).min(1).max(MAX_ARTWORK_FILES).optional(),
+    preferDesign: z.boolean().default(false),
+    productSlug: z.string().max(120).optional(),
+    productName: z.string().max(200).optional(),
+    quantity: z.coerce.number().int().positive().max(10000).optional(),
+    consentGiven: z.literal(true, {
+      errorMap: () => ({ message: "Consent is required" }),
+    }),
+    website: z.string().optional(),
+  })
+  .refine((data) => (data.artworkAssetIds?.length || 0) > 0 || Boolean(data.artworkAssetId), {
+    message: "At least one artwork upload is required",
+    path: ["artworkAssetIds"],
+  });
 
 export async function POST(request: NextRequest) {
   try {
@@ -59,13 +66,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const artworkAssetIds =
+      data.artworkAssetIds?.length
+        ? data.artworkAssetIds
+        : data.artworkAssetId
+          ? [data.artworkAssetId]
+          : [];
+
     const { submission, totalDue } = await createCustomizeSubmission({
       firstName: data.firstName,
       lastName: data.lastName,
       email: data.email,
       phone: data.phone,
       message: data.message || "",
-      artworkAssetId: data.artworkAssetId,
+      artworkAssetIds,
       preferDesign: data.preferDesign,
       productSlug: data.productSlug,
       productName: data.productName,

@@ -8,6 +8,7 @@ export interface ICustomizeSubmission extends Document {
   phone: string;
   message: string;
   artworkAssetId: string;
+  artworkAssetIds?: string[];
   productSlug?: string;
   productName?: string;
   quantity?: number;
@@ -34,6 +35,7 @@ const CustomizeSubmissionSchema = new Schema<ICustomizeSubmission>(
     phone: { type: String, required: true },
     message: { type: String, required: true },
     artworkAssetId: { type: String, required: true },
+    artworkAssetIds: [String],
     productSlug: String,
     productName: String,
     quantity: Number,

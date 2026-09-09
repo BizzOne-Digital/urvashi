@@ -63,6 +63,11 @@ export async function resolveCustomizeBaseFee(options: {
   };
 }
 
+export function getSubmissionArtworkIds(submission: ICustomizeSubmission): string[] {
+  if (submission.artworkAssetIds?.length) return submission.artworkAssetIds;
+  return submission.artworkAssetId ? [submission.artworkAssetId] : [];
+}
+
 export async function finalizeCustomizeSubmission(
   submission: ICustomizeSubmission
 ): Promise<{ contactMessageId: string }> {
@@ -90,6 +95,8 @@ export async function finalizeCustomizeSubmission(
     .filter(Boolean)
     .join("\n");
 
+  const artworkIds = getSubmissionArtworkIds(submission);
+
   const contactMessage = await ContactMessage.create({
     firstName: submission.firstName,
     lastName: submission.lastName,
@@ -97,7 +104,7 @@ export async function finalizeCustomizeSubmission(
     phone: submission.phone,
     inquiryType,
     message: `${submission.message}\n\n---\n${paymentNote}\nReference: ${submission.referenceNumber}`,
-    artworkAssetIds: [submission.artworkAssetId],
+    artworkAssetIds: artworkIds,
     consentGiven: true,
     status: "new",
     adminNotes: submission.preferDesign
@@ -105,8 +112,8 @@ export async function finalizeCustomizeSubmission(
       : "Paid customization upload — review artwork and contact customer about printing.",
   });
 
-  await CustomerArtwork.updateOne(
-    { _id: submission.artworkAssetId },
+  await CustomerArtwork.updateMany(
+    { _id: { $in: artworkIds } },
     { contactMessageId: contactMessage._id }
   );
 
@@ -116,7 +123,9 @@ export async function finalizeCustomizeSubmission(
   await submission.save();
 
   const notifyEmail = process.env.ORDER_NOTIFICATION_EMAIL || settings.contact.email;
-  const artwork = await getPrivateArtworkBuffer(submission.artworkAssetId);
+  const artworkAttachments = (
+    await Promise.all(artworkIds.map((id) => getPrivateArtworkBuffer(id)))
+  ).filter((artwork): artwork is NonNullable<typeof artwork> => Boolean(artwork));
 
   const subject = submission.preferDesign
     ? `PAID design request ${submission.referenceNumber} — ${submission.firstName} ${submission.lastName}`
@@ -142,13 +151,15 @@ export async function finalizeCustomizeSubmission(
     "Customer requirements:",
     submission.message,
     "",
-    "The customer's uploaded image is attached to this email.",
+    artworkIds.length > 1
+      ? "The customer's uploaded images are attached to this email."
+      : "The customer's uploaded image is attached to this email.",
     "",
     submission.preferDesign
-      ? "Action: Review the image and requirements, then email the customer 2–3 design options."
-      : "Action: Review the upload and contact the customer about printing their order.",
+      ? "Action: Review the images and requirements, then email the customer 2–3 design options."
+      : "Action: Review the upload(s) and contact the customer about printing their order.",
     "",
-    `Artwork ID: ${submission.artworkAssetId}`,
+    `Artwork IDs: ${artworkIds.join(", ")}`,
     `Message ID: ${contactMessage._id.toString()}`,
   ].filter(Boolean);
 
@@ -157,14 +168,12 @@ export async function finalizeCustomizeSubmission(
     subject,
     text: textLines.join("\n"),
     html: textLines.map((line) => (line ? `<p>${line}</p>` : "")).join(""),
-    attachments: artwork
-      ? [
-          {
-            filename: artwork.originalName,
-            content: artwork.buffer,
-            contentType: artwork.mimeType,
-          },
-        ]
+    attachments: artworkAttachments.length
+      ? artworkAttachments.map((artwork) => ({
+          filename: artwork.originalName,
+          content: artwork.buffer,
+          contentType: artwork.mimeType,
+        }))
       : undefined,
   });
 
@@ -253,7 +262,7 @@ export async function createCustomizeSubmission(data: {
   email: string;
   phone: string;
   message: string;
-  artworkAssetId: string;
+  artworkAssetIds: string[];
   preferDesign: boolean;
   productSlug?: string;
   productName?: string;
@@ -281,7 +290,8 @@ export async function createCustomizeSubmission(data: {
     email: data.email.toLowerCase(),
     phone: data.phone,
     message: messageText,
-    artworkAssetId: data.artworkAssetId,
+    artworkAssetId: data.artworkAssetIds[0],
+    artworkAssetIds: data.artworkAssetIds,
     productSlug: data.productSlug,
     productName: data.productName || productName,
     quantity: data.quantity,
