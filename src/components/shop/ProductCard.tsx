@@ -6,6 +6,7 @@ import { getProductDisplayImages } from "@/lib/product-catalog";
 import { resolveImageSrc } from "@/lib/image-url";
 import { getProductPriceDisplay } from "@/lib/pricing";
 import { isNewProduct, isPromoProduct } from "@/lib/promo";
+import { UploadArtworkPlaceholder } from "@/components/shop/UploadArtworkPlaceholder";
 import { cn } from "@/lib/utils";
 
 interface ProductCardProduct {
@@ -33,6 +34,45 @@ interface ProductCardProps {
   priority?: boolean;
 }
 
+function ProductCardImage({
+  product,
+  blank,
+  customized,
+  priority,
+}: {
+  product: ProductCardProduct;
+  blank?: { url: string; alt?: string };
+  customized?: { url: string; alt?: string };
+  priority?: boolean;
+}) {
+  const sampleImage = customized || product.cardImage || blank;
+
+  if (sampleImage) {
+    return (
+      <div className="grid h-full w-full grid-cols-2">
+        <UploadArtworkPlaceholder className="border-r border-chrome-light/40" />
+        <div className="relative bg-gradient-to-br from-royal-blue/5 to-cyan/10">
+          <Image
+            src={resolveImageSrc(sampleImage.url)}
+            alt={sampleImage.alt || `${product.name} sample design`}
+            fill
+            className="object-contain p-3 transition-transform duration-500 group-hover:scale-105"
+            sizes="25vw"
+            priority={priority}
+          />
+          <span className="absolute bottom-2 left-2 rounded bg-royal-blue px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-pure-paper">
+            Sample
+          </span>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <UploadArtworkPlaceholder className="h-full min-h-[200px]" />
+  );
+}
+
 export function ProductCard({ product, className, priority = false }: ProductCardProps) {
   const { blank, customized } = getProductDisplayImages(product);
   const { display, isQuote } = getProductPriceDisplay(product, product.currency || "CAD");
@@ -43,56 +83,12 @@ export function ProductCard({ product, className, priority = false }: ProductCar
     <article className={cn("card-product group flex h-full flex-col", className)} data-reveal-item>
       <Link href={`/shop/${product.slug}`} className="flex flex-1 flex-col">
         <div className="relative aspect-square overflow-hidden bg-gradient-to-br from-chrome-light/30 via-pure-paper to-chrome-light/20">
-          {product.cardImage ? (
-            <Image
-              src={resolveImageSrc(product.cardImage.url)}
-              alt={product.cardImage.alt || `${product.name} blank and customized`}
-              fill
-              className="object-cover transition-transform duration-500 group-hover:scale-105"
-              sizes="(max-width: 640px) 50vw, 25vw"
-              priority={priority}
-            />
-          ) : blank && customized ? (
-            <div className="grid h-full w-full grid-cols-2">
-              <div className="relative border-r border-chrome-light/40 bg-pure-paper">
-                <Image
-                  src={resolveImageSrc(blank.url)}
-                  alt={blank.alt || `${product.name} blank`}
-                  fill
-                  className="object-contain p-3"
-                  sizes="25vw"
-                  priority={priority}
-                />
-                <span className="absolute bottom-2 left-2 rounded bg-ink-black/70 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-pure-paper">
-                  Blank
-                </span>
-              </div>
-              <div className="relative bg-gradient-to-br from-royal-blue/5 to-cyan/10">
-                <Image
-                  src={resolveImageSrc(customized.url)}
-                  alt={customized.alt || `${product.name} customized`}
-                  fill
-                  className="object-contain p-3 transition-transform duration-500 group-hover:scale-105"
-                  sizes="25vw"
-                  priority={priority}
-                />
-                <span className="absolute bottom-2 left-2 rounded bg-royal-blue px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-pure-paper">
-                  Custom
-                </span>
-              </div>
-            </div>
-          ) : blank ? (
-            <Image
-              src={resolveImageSrc(blank.url)}
-              alt={blank.alt || product.name}
-              fill
-              className="object-contain p-6 transition-transform duration-500 group-hover:scale-110"
-              sizes="(max-width: 640px) 50vw, 25vw"
-              priority={priority}
-            />
-          ) : (
-            <div className="flex h-full items-center justify-center text-sm text-chrome-mid">No image</div>
-          )}
+          <ProductCardImage
+            product={product}
+            blank={blank}
+            customized={customized}
+            priority={priority}
+          />
 
           {isNew && (
             <span className="absolute left-3 top-3 rounded-sm bg-cyan px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-pure-paper shadow-lg">

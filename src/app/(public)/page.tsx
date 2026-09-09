@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Container } from "@/components/ui/Container";
 import { buttonVariants } from "@/components/ui/Button";
 import { ProductGrid } from "@/components/shop/ProductGrid";
+import { UploadArtworkPlaceholder } from "@/components/shop/UploadArtworkPlaceholder";
 import { CinematicIntro } from "@/components/home/CinematicIntro";
 import { HomeHero } from "@/components/home/HomeHero";
 import { ContactForm } from "@/components/forms/ContactForm";
@@ -155,9 +156,9 @@ export default async function HomePage() {
           <h2 className="heading-section gradient-heading-light">{cmsHeading(cmsPage, "services", "What we print")}</h2>
           <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" data-reveal-stagger>
             {showcaseProducts.map((product) => {
-              const imageUrl =
-                product.cardImage?.url || product.customizedImage?.url || product.blankImage?.url;
-              if (!imageUrl) return null;
+              const sampleUrl =
+                product.customizedImage?.url || product.cardImage?.url || product.blankImage?.url;
+              if (!sampleUrl) return null;
 
               return (
                 <Link
@@ -166,14 +167,17 @@ export default async function HomePage() {
                   className="group card-vibrant overflow-hidden"
                   data-reveal-item
                 >
-                  <div className="relative aspect-square overflow-hidden bg-[#0a0c14]">
-                    <Image
-                      src={imageUrl}
-                      alt={`${product.name} blank and customized`}
-                      fill
-                      className="object-cover transition-transform duration-500 group-hover:scale-105"
-                      sizes="25vw"
-                    />
+                  <div className="grid aspect-square grid-cols-2 overflow-hidden bg-[#0a0c14]">
+                    <UploadArtworkPlaceholder className="border-r border-white/10" />
+                    <div className="relative">
+                      <Image
+                        src={sampleUrl}
+                        alt={`${product.name} sample design`}
+                        fill
+                        className="object-cover transition-transform duration-500 group-hover:scale-105"
+                        sizes="25vw"
+                      />
+                    </div>
                   </div>
                   <div className="p-4">
                     <h3 className="font-display font-semibold text-pure-paper group-hover:text-cyan">{product.name}</h3>

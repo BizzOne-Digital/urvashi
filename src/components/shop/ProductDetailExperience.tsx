@@ -8,6 +8,7 @@ import { getProductDisplayImages, DESIGN_HELP_SURCHARGE } from "@/lib/product-ca
 import { resolveImageSrc } from "@/lib/image-url";
 import { getProductPriceDisplay } from "@/lib/pricing";
 import { formatCurrency } from "@/lib/utils";
+import { UploadArtworkPlaceholder } from "@/components/shop/UploadArtworkPlaceholder";
 import { cn } from "@/lib/utils";
 
 type ProductMode = "blank" | "customized";
@@ -49,7 +50,9 @@ export function ProductDetailExperience({ product }: ProductDetailExperienceProp
   return (
     <div className="grid gap-10 lg:grid-cols-2 lg:gap-12">
       <div className="relative aspect-square overflow-hidden rounded-xl border border-white/10 bg-[#0a0c14]">
-        {activeImage ? (
+        {mode === "blank" && allowsBlank ? (
+          <UploadArtworkPlaceholder className="h-full border-0" />
+        ) : activeImage ? (
           <Image
             src={resolveImageSrc(activeImage.url)}
             alt={activeImage.alt || product.name}
@@ -113,7 +116,7 @@ export function ProductDetailExperience({ product }: ProductDetailExperienceProp
         {mode === "blank" && allowsBlank && (
           <div className="space-y-4 border-t border-white/10 pt-5">
             <p className="text-sm !text-white">
-              Preview the blank version of this product.
+              Upload your image or logo to customize this product.
               {allowsCustom && (
                 <>
                   {" "}
