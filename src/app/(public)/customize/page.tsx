@@ -10,6 +10,7 @@ import { CustomizeUploadForm } from "@/components/customize/CustomizeUploadForm"
 import { getCachedSettings } from "@/lib/settings";
 import { getCustomizeBaseFee, getCustomizeDesignFee } from "@/lib/customize-submission";
 import { getPublicMonerisMode } from "@/lib/moneris";
+import { getCustomizerProducts } from "@/lib/public-data";
 
 export const metadata: Metadata = {
   title: "Customize",
@@ -22,7 +23,10 @@ interface Props {
 }
 
 export default async function CustomizePage({ searchParams }: Props) {
-  const settings = await getCachedSettings();
+  const [settings, customizerProducts] = await Promise.all([
+    getCachedSettings(),
+    getCustomizerProducts(),
+  ]);
   const { cancelled } = await searchParams;
   const designFee = getCustomizeDesignFee();
   const baseFee = getCustomizeBaseFee();
@@ -39,7 +43,7 @@ export default async function CustomizePage({ searchParams }: Props) {
       <HighlightStrip />
 
       <VibrantSection variant="mesh" reveal={false}>
-        <Container className="max-w-2xl">
+        <Container className="max-w-3xl">
           <SectionHeader
             eyebrow="Quick request"
             title="Upload & submit"
@@ -59,6 +63,15 @@ export default async function CustomizePage({ searchParams }: Props) {
               designFee={designFee}
               monerisMode={getPublicMonerisMode()}
               rightsConfirmationCopy={settings.customization?.rightsConfirmationCopy}
+              previewProducts={customizerProducts.map((product) => ({
+                _id: String(product._id),
+                name: product.name,
+                slug: product.slug,
+                blankImage: product.blankImage,
+                customizedImage: product.customizedImage,
+                images: product.images,
+                customizer: product.customizer,
+              }))}
             />
           </div>
 

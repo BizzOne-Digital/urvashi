@@ -9,12 +9,15 @@ import { Container } from "@/components/ui/Container";
 import { MonerisCheckout } from "@/components/payments/MonerisCheckout";
 import {
   ArtworkMultiUpload,
+  getArtworkImagePreviewUrls,
   getUploadedArtworkIds,
   type LocalArtworkFile,
   uploadArtworkItemsOnSubmit,
   uploadPendingArtworkItems,
 } from "@/components/customize/ArtworkMultiUpload";
-import { DESIGN_HELP_SURCHARGE } from "@/lib/product-catalog";
+import { ProductMockupPreview } from "@/components/customize/ProductMockupPreview";
+import { DESIGN_HELP_SURCHARGE, getProductDisplayImages } from "@/lib/product-catalog";
+import { resolveImageSrc } from "@/lib/image-url";
 import { formatCurrency } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 
@@ -48,6 +51,9 @@ interface PendingMonerisPayment {
 
 export function ProductCustomizeForm({ product, monerisMode = "qa" }: ProductCustomizeFormProps) {
   const router = useRouter();
+  const { blank, customized } = getProductDisplayImages(product);
+  const baseImage = resolveImageSrc(customized?.url || blank?.url);
+  const printArea = product.customizer?.printArea;
   const designFee = product.designHelpSurcharge ?? DESIGN_HELP_SURCHARGE;
   const basePrice = product.price ?? 0;
 
@@ -196,44 +202,41 @@ export function ProductCustomizeForm({ product, monerisMode = "qa" }: ProductCus
             Upload your images (add multiple for collages), pay now through Moneris, and we will contact you to confirm before production.
           </p>
 
-          <div className="relative mt-8 min-h-[280px] overflow-hidden rounded-xl border border-white/10 bg-[#0a0c14] p-4">
-            {artworkItems.length > 0 ? (
-              <div className="grid grid-cols-2 gap-3">
-                {artworkItems.map((item) => (
-                  <div key={item.key} className="relative overflow-hidden rounded-lg border border-white/10 bg-[#050508]">
-                    {item.file.type.startsWith("image/") ? (
-                      /* eslint-disable-next-line @next/next/no-img-element */
-                      <img
-                        src={item.previewUrl}
-                        alt={item.file.name}
-                        className="aspect-square w-full object-contain p-3"
-                      />
-                    ) : (
-                      <div className="flex aspect-square items-center justify-center p-3 text-center text-xs text-chrome-light">
-                        {item.file.name}
-                      </div>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => removeArtwork(item.key)}
-                      className="absolute right-1 top-1 rounded bg-black/70 px-1.5 py-0.5 text-[10px] text-pure-paper hover:bg-black"
-                      aria-label={`Remove ${item.file.name}`}
-                    >
-                      Remove
-                    </button>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="flex h-full min-h-[240px] flex-col items-center justify-center gap-2 p-8 text-center">
-                <p className="text-sm text-chrome-light">Your artwork preview will appear here</p>
-                <p className="text-xs text-chrome-mid">Upload one or more images using the form on the right</p>
-              </div>
-            )}
-          </div>
-          <p className="mt-3 text-xs text-chrome-mid">
-            {product.customizer?.previewDisclaimer || "Preview is approximate. Final placement may vary slightly."}
-          </p>
+          <ProductMockupPreview
+            productName={product.name}
+            baseImageSrc={baseImage}
+            artworkUrls={getArtworkImagePreviewUrls(artworkItems)}
+            printArea={printArea}
+            disclaimer={
+              product.customizer?.previewDisclaimer ||
+              "Rough draft only — final placement, colour, and sizing may vary slightly."
+            }
+          />
+
+          {artworkItems.length > 0 && (
+            <div className="mt-4 grid grid-cols-4 gap-2 sm:grid-cols-6">
+              {artworkItems.map((item) => (
+                <div key={item.key} className="relative overflow-hidden rounded-md border border-white/10 bg-[#0a0c14]">
+                  {item.file.type.startsWith("image/") ? (
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    <img src={item.previewUrl} alt={item.file.name} className="aspect-square w-full object-cover" />
+                  ) : (
+                    <div className="flex aspect-square items-center justify-center p-1 text-center text-[9px] text-chrome-mid">
+                      PDF
+                    </div>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => removeArtwork(item.key)}
+                    className="absolute right-0.5 top-0.5 rounded bg-black/75 px-1 text-[9px] text-pure-paper"
+                    aria-label={`Remove ${item.file.name}`}
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         <form

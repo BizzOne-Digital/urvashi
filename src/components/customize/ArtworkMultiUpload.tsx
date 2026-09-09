@@ -204,6 +204,12 @@ export function ArtworkMultiUpload({
   );
 }
 
+export function getArtworkImagePreviewUrls(items: LocalArtworkFile[]): string[] {
+  return items
+    .filter((item) => item.file.type.startsWith("image/"))
+    .map((item) => item.previewUrl);
+}
+
 export function getUploadedArtworkIds(items: LocalArtworkFile[]): string[] {
   return items.map((item) => item.artworkId).filter((id): id is string => Boolean(id));
 }

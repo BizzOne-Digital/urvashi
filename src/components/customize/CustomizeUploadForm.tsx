@@ -11,11 +11,15 @@ import { MonerisCheckout } from "@/components/payments/MonerisCheckout";
 import {
   ArtworkMultiUpload,
   clearArtworkItems,
+  getArtworkImagePreviewUrls,
   getUploadedArtworkIds,
   type LocalArtworkFile,
   uploadArtworkItemsOnSubmit,
   uploadPendingArtworkItems,
 } from "@/components/customize/ArtworkMultiUpload";
+import { ProductMockupPreview } from "@/components/customize/ProductMockupPreview";
+import { getProductDisplayImages } from "@/lib/product-catalog";
+import { resolveImageSrc } from "@/lib/image-url";
 import { cn, formatCurrency } from "@/lib/utils";
 
 type MonerisEnvironment = "qa" | "prod";
@@ -35,11 +39,25 @@ const schema = z.object({
 
 type FormData = z.infer<typeof schema>;
 
+interface PreviewProduct {
+  _id: string;
+  name: string;
+  slug: string;
+  blankImage?: { url: string; alt?: string };
+  customizedImage?: { url: string; alt?: string };
+  images?: Array<{ url: string; alt?: string }>;
+  customizer?: {
+    printArea?: { x: number; y: number; width: number; height: number };
+    previewDisclaimer?: string;
+  };
+}
+
 interface CustomizeUploadFormProps {
   baseFee?: number;
   designFee?: number;
   monerisMode?: MonerisEnvironment;
   rightsConfirmationCopy?: string;
+  previewProducts?: PreviewProduct[];
   className?: string;
 }
 
@@ -54,13 +72,22 @@ export function CustomizeUploadForm({
   designFee = 5,
   monerisMode = "qa",
   rightsConfirmationCopy = "I confirm that I have the right to use this artwork for printing purposes.",
+  previewProducts = [],
   className,
 }: CustomizeUploadFormProps) {
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [artworkItems, setArtworkItems] = useState<LocalArtworkFile[]>([]);
+  const [selectedProductId, setSelectedProductId] = useState(previewProducts[0]?._id || "");
   const [pendingPayment, setPendingPayment] = useState<PendingMonerisPayment | null>(null);
+
+  const selectedProduct =
+    previewProducts.find((product) => product._id === selectedProductId) || previewProducts[0];
+  const previewImages = selectedProduct ? getProductDisplayImages(selectedProduct) : null;
+  const previewBaseImage = previewImages
+    ? resolveImageSrc(previewImages.customized?.url || previewImages.blank?.url)
+    : "/home/customizer-preview.jpg";
 
   const {
     register,
@@ -233,11 +260,42 @@ export function CustomizeUploadForm({
         />
       </div>
 
+      {previewProducts.length > 0 && (
+        <div>
+          <label htmlFor="preview-product" className="mb-1 block text-sm font-medium text-pure-paper">
+            Preview on product
+          </label>
+          <select
+            id="preview-product"
+            value={selectedProductId}
+            onChange={(e) => setSelectedProductId(e.target.value)}
+            className={fieldClass}
+          >
+            {previewProducts.map((product) => (
+              <option key={product._id} value={product._id} className="bg-[#12141c]">
+                {product.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
       <ArtworkMultiUpload
         items={artworkItems}
         onChange={setArtworkItems}
         rightsConfirmed={consentGiven}
         customerNote={message}
+      />
+
+      <ProductMockupPreview
+        productName={selectedProduct?.name}
+        baseImageSrc={previewBaseImage}
+        artworkUrls={getArtworkImagePreviewUrls(artworkItems)}
+        printArea={selectedProduct?.customizer?.printArea}
+        disclaimer={
+          selectedProduct?.customizer?.previewDisclaimer ||
+          "Rough draft only — final placement, colour, and sizing may vary slightly."
+        }
       />
 
       <div className="rounded-lg border border-cyan/25 bg-cyan/5 p-4">
