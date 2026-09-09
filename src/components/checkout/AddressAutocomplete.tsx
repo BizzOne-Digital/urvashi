@@ -1,41 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import {
-  parseGooglePlace,
-  type AddressSelection,
-  type AddressSuggestion,
-} from "@/lib/address-autocomplete";
+import { type AddressSelection, type AddressSuggestion } from "@/lib/address-autocomplete";
 import { cn } from "@/lib/utils";
 
-const GOOGLE_MAPS_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
-
-interface GoogleMapsPlacesAutocomplete {
-  addListener: (event: string, handler: () => void) => void;
-  getPlace: () => {
-    address_components?: Array<{ long_name: string; short_name: string; types: string[] }>;
-    formatted_address?: string;
-  };
-}
-
-declare global {
-  interface Window {
-    google?: {
-      maps: {
-        places: {
-          Autocomplete: new (
-            input: HTMLInputElement,
-            options?: {
-              componentRestrictions?: { country: string[] };
-              fields?: string[];
-              types?: string[];
-            }
-          ) => GoogleMapsPlacesAutocomplete;
-        };
-      };
-    };
-  }
-}
+const MIN_QUERY_LENGTH = 2;
 
 interface AddressAutocompleteProps {
   value: string;
@@ -43,6 +12,7 @@ interface AddressAutocompleteProps {
   onAddressSelect: (address: AddressSelection) => void;
   className?: string;
   placeholder?: string;
+  id?: string;
 }
 
 export function AddressAutocomplete({
@@ -51,15 +21,16 @@ export function AddressAutocomplete({
   onAddressSelect,
   className,
   placeholder = "Start typing your address…",
+  id = "address1",
 }: AddressAutocompleteProps) {
-  const inputRef = useRef<HTMLInputElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
   const [open, setOpen] = useState(false);
   const [suggestions, setSuggestions] = useState<AddressSuggestion[]>([]);
   const [loading, setLoading] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
-  const googleBoundRef = useRef(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const requestIdRef = useRef(0);
 
   const applySelection = useCallback(
     (address: AddressSelection) => {
@@ -72,78 +43,54 @@ export function AddressAutocomplete({
     [onChange, onAddressSelect]
   );
 
-  useEffect(() => {
-    if (!GOOGLE_MAPS_KEY || !inputRef.current || googleBoundRef.current) return;
-
-    const bindGoogleAutocomplete = () => {
-      if (!inputRef.current || !window.google?.maps?.places) return;
-
-      const autocomplete = new window.google.maps.places.Autocomplete(inputRef.current, {
-        componentRestrictions: { country: ["ca"] },
-        fields: ["address_components", "formatted_address"],
-        types: ["address"],
-      });
-
-      autocomplete.addListener("place_changed", () => {
-        const place = autocomplete.getPlace();
-        const parsed = parseGooglePlace(place);
-        if (parsed.address1) {
-          applySelection(parsed);
-        }
-      });
-
-      googleBoundRef.current = true;
-    };
-
-    if (window.google?.maps?.places) {
-      bindGoogleAutocomplete();
-      return;
-    }
-
-    const existing = document.querySelector<HTMLScriptElement>("script[data-google-places]");
-    if (existing) {
-      existing.addEventListener("load", bindGoogleAutocomplete);
-      return () => existing.removeEventListener("load", bindGoogleAutocomplete);
-    }
-
-    const script = document.createElement("script");
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_KEY}&libraries=places`;
-    script.async = true;
-    script.dataset.googlePlaces = "true";
-    script.onload = bindGoogleAutocomplete;
-    document.head.appendChild(script);
-  }, [applySelection]);
-
   const fetchSuggestions = useCallback(async (query: string) => {
-    if (query.trim().length < 3) {
+    const trimmed = query.trim();
+    if (trimmed.length < MIN_QUERY_LENGTH) {
       setSuggestions([]);
       setOpen(false);
+      setLoading(false);
       return;
     }
 
+    const requestId = ++requestIdRef.current;
     setLoading(true);
+
     try {
-      const res = await fetch(`/api/address-search?q=${encodeURIComponent(query.trim())}`);
+      const res = await fetch(`/api/address-search?q=${encodeURIComponent(trimmed)}`);
       const data = (await res.json()) as AddressSuggestion[];
+
+      if (requestId !== requestIdRef.current) return;
+
       setSuggestions(data);
       setOpen(data.length > 0);
       setActiveIndex(-1);
     } catch {
+      if (requestId !== requestIdRef.current) return;
       setSuggestions([]);
       setOpen(false);
     } finally {
-      setLoading(false);
+      if (requestId === requestIdRef.current) {
+        setLoading(false);
+      }
     }
+  }, []);
+
+  const scheduleFetch = useCallback(
+    (query: string) => {
+      clearTimeout(debounceRef.current);
+      debounceRef.current = setTimeout(() => fetchSuggestions(query), 280);
+    },
+    [fetchSuggestions]
+  );
+
+  useEffect(() => {
+    return () => clearTimeout(debounceRef.current);
   }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const next = e.target.value;
     onChange(next);
-
-    if (GOOGLE_MAPS_KEY) return;
-
-    clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => fetchSuggestions(next), 400);
+    scheduleFetch(next);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -163,40 +110,45 @@ export function AddressAutocomplete({
     }
   };
 
-  const showCustomDropdown = !GOOGLE_MAPS_KEY && open && suggestions.length > 0;
+  const showDropdown = open && suggestions.length > 0;
 
   return (
-    <div className="relative">
+    <div ref={containerRef} className="relative">
       <input
-        ref={inputRef}
+        id={id}
         type="text"
         value={value}
         onChange={handleInputChange}
         onKeyDown={handleKeyDown}
         onFocus={() => {
-          if (!GOOGLE_MAPS_KEY && suggestions.length > 0) setOpen(true);
+          if (value.trim().length >= MIN_QUERY_LENGTH) {
+            scheduleFetch(value);
+          } else if (suggestions.length > 0) {
+            setOpen(true);
+          }
         }}
         onBlur={() => {
-          setTimeout(() => setOpen(false), 150);
+          setTimeout(() => setOpen(false), 200);
         }}
         placeholder={placeholder}
-        autoComplete="street-address"
+        autoComplete="off"
         className={className}
         aria-autocomplete="list"
-        aria-expanded={showCustomDropdown}
-        aria-controls="address-suggestions"
+        aria-expanded={showDropdown}
+        aria-controls={`${id}-suggestions`}
+        role="combobox"
       />
 
-      {!GOOGLE_MAPS_KEY && loading && (
+      {loading && (
         <p className="mt-1 text-xs text-chrome-mid">Searching addresses…</p>
       )}
 
-      {showCustomDropdown && (
+      {showDropdown && (
         <ul
-          id="address-suggestions"
+          id={`${id}-suggestions`}
           ref={listRef}
           role="listbox"
-          className="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-sm border border-chrome-light/40 bg-[#12141c] py-1 shadow-[0_12px_40px_rgba(0,0,0,0.45)]"
+          className="absolute left-0 right-0 top-full z-[200] mt-1 max-h-64 overflow-auto rounded-sm border border-cyan/30 bg-[#12141c] py-1 shadow-[0_16px_48px_rgba(0,0,0,0.55)]"
         >
           {suggestions.map((item, index) => (
             <li key={item.id} role="option" aria-selected={index === activeIndex}>
@@ -221,9 +173,7 @@ export function AddressAutocomplete({
       )}
 
       <p className="mt-1 text-xs text-chrome-mid">
-        {GOOGLE_MAPS_KEY
-          ? "Address suggestions appear as you type."
-          : "Type at least 3 characters for Canadian address suggestions."}
+        Type your street address — Canadian suggestions will appear in the dropdown.
       </p>
     </div>
   );

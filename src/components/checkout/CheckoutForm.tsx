@@ -281,8 +281,9 @@ export function CheckoutForm({
 
         <h2 className="font-display text-xl font-semibold pt-4">Shipping address</h2>
         <div>
-          <label className="mb-1 block text-sm font-medium">Street address</label>
+          <label htmlFor="address1" className="mb-1 block text-sm font-medium">Address line 1</label>
           <AddressAutocomplete
+            id="address1"
             value={address1}
             onChange={(v) => setValue("address1", v, { shouldValidate: true })}
             onAddressSelect={(addr) => {
@@ -293,7 +294,7 @@ export function CheckoutForm({
               if (addr.country) setValue("country", addr.country);
             }}
             className={fieldClass}
-            placeholder="Start typing your address…"
+            placeholder="e.g. 28 Sinclair St"
           />
           {errors.address1 && (
             <p className="mt-1 text-xs text-deep-magenta">{errors.address1.message}</p>
@@ -301,19 +302,22 @@ export function CheckoutForm({
         </div>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <div>
-            <input placeholder="City" {...register("city")} className={fieldClass} />
+            <label htmlFor="city" className="mb-1 block text-sm font-medium">City</label>
+            <input id="city" placeholder="City" {...register("city")} className={fieldClass} />
             {errors.city && (
               <p className="mt-1 text-xs text-deep-magenta">{errors.city.message}</p>
             )}
           </div>
           <div>
-            <input placeholder="Province" {...register("province")} className={fieldClass} />
+            <label htmlFor="province" className="mb-1 block text-sm font-medium">Province</label>
+            <input id="province" placeholder="Province" {...register("province")} className={fieldClass} />
             {errors.province && (
               <p className="mt-1 text-xs text-deep-magenta">{errors.province.message}</p>
             )}
           </div>
           <div>
-            <input placeholder="Postal code" {...register("postalCode")} className={fieldClass} />
+            <label htmlFor="postalCode" className="mb-1 block text-sm font-medium">Postal code</label>
+            <input id="postalCode" placeholder="Postal code" {...register("postalCode")} className={fieldClass} />
             {errors.postalCode && (
               <p className="mt-1 text-xs text-deep-magenta">{errors.postalCode.message}</p>
             )}

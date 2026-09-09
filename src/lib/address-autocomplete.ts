@@ -83,3 +83,37 @@ export function parseNominatimResult(item: NominatimResult): AddressSuggestion {
     },
   };
 }
+
+export interface PhotonFeature {
+  properties: {
+    osm_id: number;
+    name?: string;
+    housenumber?: string;
+    street?: string;
+    city?: string;
+    state?: string;
+    postcode?: string;
+    country?: string;
+    countrycode?: string;
+  };
+}
+
+export function parsePhotonFeature(feature: PhotonFeature): AddressSuggestion {
+  const p = feature.properties;
+  const address1 = [p.housenumber, p.street || p.name].filter(Boolean).join(" ");
+  const label = [address1, p.city, p.state, p.postcode, p.country || "Canada"]
+    .filter(Boolean)
+    .join(", ");
+
+  return {
+    id: `photon-${p.osm_id}`,
+    label,
+    address: {
+      address1: address1 || p.name || label,
+      city: p.city,
+      province: p.state,
+      postalCode: p.postcode,
+      country: p.country || "Canada",
+    },
+  };
+}
