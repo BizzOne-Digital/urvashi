@@ -15,7 +15,15 @@ import {
   uploadArtworkItemsOnSubmit,
   uploadPendingArtworkItems,
 } from "@/components/customize/ArtworkMultiUpload";
+import {
+  CalendarArtworkUpload,
+  createEmptyCalendarSlots,
+  getCalendarArtworkItems,
+  getCalendarPreviewUrls,
+} from "@/components/customize/CalendarArtworkUpload";
+import { CalendarMockupPreview } from "@/components/customize/CalendarMockupPreview";
 import { ProductMockupPreview } from "@/components/customize/ProductMockupPreview";
+import { CALENDAR_MONTH_COUNT, isCalendarProduct } from "@/lib/calendar-customize";
 import { DESIGN_HELP_SURCHARGE, getProductDisplayImages } from "@/lib/product-catalog";
 import { resolveImageSrc } from "@/lib/image-url";
 import { formatCurrency } from "@/lib/utils";
@@ -56,8 +64,11 @@ export function ProductCustomizeForm({ product, monerisMode = "qa" }: ProductCus
   const printArea = product.customizer?.printArea;
   const designFee = product.designHelpSurcharge ?? DESIGN_HELP_SURCHARGE;
   const basePrice = product.price ?? 0;
+  const isCalendar = isCalendarProduct(product.slug);
 
   const [artworkItems, setArtworkItems] = useState<LocalArtworkFile[]>([]);
+  const [calendarSlots, setCalendarSlots] = useState(createEmptyCalendarSlots);
+  const [previewMonth, setPreviewMonth] = useState(0);
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [designHelp, setDesignHelp] = useState(false);
@@ -85,15 +96,27 @@ export function ProductCustomizeForm({ product, monerisMode = "qa" }: ProductCus
 
   const handleRightsChange = async (checked: boolean) => {
     setForm((prev) => ({ ...prev, rightsConfirmed: checked }));
-    if (!checked || !artworkItems.length) return;
+    if (!checked) return;
+
+    const hasArtwork = isCalendar
+      ? getCalendarArtworkItems(calendarSlots).length > 0
+      : artworkItems.length > 0;
+    if (!hasArtwork) return;
 
     setUploading(true);
     try {
-      const uploaded = await uploadPendingArtworkItems(artworkItems, form.instructions);
-      setArtworkItems(uploaded);
-      if (getUploadedArtworkIds(uploaded).length) {
-        toast.success("Artwork uploaded");
+      if (isCalendar) {
+        const items = getCalendarArtworkItems(calendarSlots);
+        const uploaded = await uploadPendingArtworkItems(items, form.instructions);
+        const uploadedByKey = new Map(uploaded.map((item) => [item.key, item]));
+        setCalendarSlots(
+          calendarSlots.map((slot) => (slot ? uploadedByKey.get(slot.key) || slot : null))
+        );
+      } else {
+        const uploaded = await uploadPendingArtworkItems(artworkItems, form.instructions);
+        setArtworkItems(uploaded);
       }
+      toast.success("Artwork uploaded");
     } finally {
       setUploading(false);
     }
@@ -101,7 +124,13 @@ export function ProductCustomizeForm({ product, monerisMode = "qa" }: ProductCus
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!artworkItems.length) {
+    if (isCalendar) {
+      const filledMonths = getCalendarArtworkItems(calendarSlots);
+      if (filledMonths.length < CALENDAR_MONTH_COUNT) {
+        toast.error(`Please upload all ${CALENDAR_MONTH_COUNT} monthly photos (January–December)`);
+        return;
+      }
+    } else if (!artworkItems.length) {
       toast.error("Please upload at least one artwork file");
       return;
     }
@@ -116,11 +145,16 @@ export function ProductCustomizeForm({ product, monerisMode = "qa" }: ProductCus
 
     setSubmitting(true);
     try {
+      const itemsToUpload = isCalendar ? getCalendarArtworkItems(calendarSlots) : artworkItems;
       const { artworkIds } = await uploadArtworkItemsOnSubmit(
-        artworkItems,
+        itemsToUpload,
         form.rightsConfirmed,
         form.instructions
       );
+
+      const calendarNote = isCalendar
+        ? "Desk calendar — monthly photos uploaded in order from January through December."
+        : undefined;
 
       const res = await fetch("/api/customize/checkout", {
         method: "POST",
@@ -130,7 +164,7 @@ export function ProductCustomizeForm({ product, monerisMode = "qa" }: ProductCus
           lastName: form.lastName,
           email: form.email,
           phone: form.phone,
-          message: form.instructions,
+          message: [calendarNote, form.instructions].filter(Boolean).join("\n\n"),
           artworkAssetIds: artworkIds,
           preferDesign: designHelp,
           productSlug: product.slug,
@@ -199,43 +233,61 @@ export function ProductCustomizeForm({ product, monerisMode = "qa" }: ProductCus
         <div>
           <h1 className="heading-section text-pure-paper">Customize your {product.name.toLowerCase()}</h1>
           <p className="mt-3 text-chrome-light">
-            Upload your images (add multiple for collages), pay now through Moneris, and we will contact you to confirm before production.
+            {isCalendar
+              ? "Upload 12 photos — one for each month — and preview how your desk calendar will look before you pay."
+              : "Upload your images (add multiple for collages), pay now through Moneris, and we will contact you to confirm before production."}
           </p>
 
-          <ProductMockupPreview
-            productName={product.name}
-            baseImageSrc={baseImage}
-            artworkUrls={getArtworkImagePreviewUrls(artworkItems)}
-            printArea={printArea}
-            disclaimer={
-              product.customizer?.previewDisclaimer ||
-              "Rough draft only — final placement, colour, and sizing may vary slightly."
-            }
-          />
+          {isCalendar ? (
+            <CalendarMockupPreview
+              productName={product.name}
+              baseImageSrc={baseImage}
+              monthImageUrls={getCalendarPreviewUrls(calendarSlots)}
+              selectedMonth={previewMonth}
+              onSelectMonth={setPreviewMonth}
+              disclaimer={
+                product.customizer?.previewDisclaimer ||
+                "Rough draft only — final placement, colour, and sizing may vary slightly."
+              }
+            />
+          ) : (
+            <>
+              <ProductMockupPreview
+                productName={product.name}
+                baseImageSrc={baseImage}
+                artworkUrls={getArtworkImagePreviewUrls(artworkItems)}
+                printArea={printArea}
+                disclaimer={
+                  product.customizer?.previewDisclaimer ||
+                  "Rough draft only — final placement, colour, and sizing may vary slightly."
+                }
+              />
 
-          {artworkItems.length > 0 && (
-            <div className="mt-4 grid grid-cols-4 gap-2 sm:grid-cols-6">
-              {artworkItems.map((item) => (
-                <div key={item.key} className="relative overflow-hidden rounded-md border border-white/10 bg-[#0a0c14]">
-                  {item.file.type.startsWith("image/") ? (
-                    /* eslint-disable-next-line @next/next/no-img-element */
-                    <img src={item.previewUrl} alt={item.file.name} className="aspect-square w-full object-cover" />
-                  ) : (
-                    <div className="flex aspect-square items-center justify-center p-1 text-center text-[9px] text-chrome-mid">
-                      PDF
+              {artworkItems.length > 0 && (
+                <div className="mt-4 grid grid-cols-4 gap-2 sm:grid-cols-6">
+                  {artworkItems.map((item) => (
+                    <div key={item.key} className="relative overflow-hidden rounded-md border border-white/10 bg-[#0a0c14]">
+                      {item.file.type.startsWith("image/") ? (
+                        /* eslint-disable-next-line @next/next/no-img-element */
+                        <img src={item.previewUrl} alt={item.file.name} className="aspect-square w-full object-cover" />
+                      ) : (
+                        <div className="flex aspect-square items-center justify-center p-1 text-center text-[9px] text-chrome-mid">
+                          PDF
+                        </div>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => removeArtwork(item.key)}
+                        className="absolute right-0.5 top-0.5 rounded bg-black/75 px-1 text-[9px] text-pure-paper"
+                        aria-label={`Remove ${item.file.name}`}
+                      >
+                        ×
+                      </button>
                     </div>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => removeArtwork(item.key)}
-                    className="absolute right-0.5 top-0.5 rounded bg-black/75 px-1 text-[9px] text-pure-paper"
-                    aria-label={`Remove ${item.file.name}`}
-                  >
-                    ×
-                  </button>
+                  ))}
                 </div>
-              ))}
-            </div>
+              )}
+            </>
           )}
         </div>
 
@@ -275,15 +327,25 @@ export function ProductCustomizeForm({ product, monerisMode = "qa" }: ProductCus
             />
           </div>
 
-          <ArtworkMultiUpload
-            items={artworkItems}
-            onChange={setArtworkItems}
-            rightsConfirmed={form.rightsConfirmed}
-            customerNote={form.instructions}
-            label="Upload your artwork"
-            hint="PNG, JPEG, or PDF — add multiple images for collages."
-            hidePreviews
-          />
+          {isCalendar ? (
+            <CalendarArtworkUpload
+              slots={calendarSlots}
+              onChange={setCalendarSlots}
+              rightsConfirmed={form.rightsConfirmed}
+              customerNote={form.instructions}
+              onMonthFocus={setPreviewMonth}
+            />
+          ) : (
+            <ArtworkMultiUpload
+              items={artworkItems}
+              onChange={setArtworkItems}
+              rightsConfirmed={form.rightsConfirmed}
+              customerNote={form.instructions}
+              label="Upload your artwork"
+              hint="PNG, JPEG, or PDF — add multiple images for collages."
+              hidePreviews
+            />
+          )}
           {uploading && <p className="text-xs text-chrome-mid">Uploading…</p>}
 
           <div>

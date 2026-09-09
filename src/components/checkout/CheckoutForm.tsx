@@ -12,6 +12,7 @@ import { AddressAutocomplete } from "@/components/checkout/AddressAutocomplete";
 import { MonerisCheckout } from "@/components/payments/MonerisCheckout";
 import { formatCurrency } from "@/lib/utils";
 import type { CalculatedLineItem } from "@/lib/pricing";
+import { CANADIAN_PROVINCES, normalizeProvinceCode } from "@/lib/canadian-tax";
 
 type MonerisEnvironment = "qa" | "prod";
 
@@ -78,6 +79,7 @@ export function CheckoutForm({
   } | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [ratesLoading, setRatesLoading] = useState(false);
+  const [ratesError, setRatesError] = useState<string | null>(null);
   const [rateSummary, setRateSummary] = useState<RateSummary | null>(null);
   const [pendingPayment, setPendingPayment] = useState<PendingMonerisPayment | null>(null);
 
@@ -113,18 +115,22 @@ export function CheckoutForm({
       }
 
       setRatesLoading(true);
+      setRatesError(null);
       try {
         const res = await fetch("/api/shipping/rates", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             postalCode: postal,
-            province: prov,
+            province: prov || undefined,
             shippingMethod: method || undefined,
           }),
         });
         const json = await res.json();
         if (!res.ok) throw new Error(json.error || "Could not load shipping rates");
+        if (!json.rates?.length) {
+          throw new Error("No shipping options available for this postal code");
+        }
 
         setRateSummary(json);
         if (json.selectedMethod) {
@@ -132,7 +138,9 @@ export function CheckoutForm({
         }
       } catch (err) {
         setRateSummary(null);
-        toast.error(err instanceof Error ? err.message : "Shipping rates unavailable");
+        const message = err instanceof Error ? err.message : "Shipping rates unavailable";
+        setRatesError(message);
+        toast.error(message);
       } finally {
         setRatesLoading(false);
       }
@@ -142,7 +150,11 @@ export function CheckoutForm({
 
   useEffect(() => {
     const normalized = postalCode.replace(/\s/g, "");
-    if (normalized.length < 6 || !province.trim()) return;
+    if (normalized.length < 6) {
+      setRateSummary(null);
+      setRatesError(null);
+      return;
+    }
 
     const timer = setTimeout(() => {
       fetchRates(postalCode, province, shippingMethod || undefined);
@@ -289,7 +301,10 @@ export function CheckoutForm({
             onAddressSelect={(addr) => {
               setValue("address1", addr.address1, { shouldValidate: true });
               if (addr.city) setValue("city", addr.city, { shouldValidate: true });
-              if (addr.province) setValue("province", addr.province, { shouldValidate: true });
+              if (addr.province) {
+                const code = normalizeProvinceCode(addr.province);
+                setValue("province", code || addr.province, { shouldValidate: true });
+              }
               if (addr.postalCode) setValue("postalCode", addr.postalCode, { shouldValidate: true });
               if (addr.country) setValue("country", addr.country);
             }}
@@ -310,7 +325,12 @@ export function CheckoutForm({
           </div>
           <div>
             <label htmlFor="province" className="mb-1 block text-sm font-medium">Province</label>
-            <input id="province" placeholder="Province" {...register("province")} className={fieldClass} />
+            <select id="province" {...register("province")} className={fieldClass}>
+              <option value="">Select province</option>
+              {CANADIAN_PROVINCES.map((p) => (
+                <option key={p.code} value={p.code}>{p.name}</option>
+              ))}
+            </select>
             {errors.province && (
               <p className="mt-1 text-xs text-deep-magenta">{errors.province.message}</p>
             )}
@@ -329,7 +349,14 @@ export function CheckoutForm({
           <p className="text-sm text-chrome-mid">Calculating Canada Post rates…</p>
         )}
         {!ratesLoading && displaySummary.rates.length === 0 && postalCode.replace(/\s/g, "").length >= 6 && (
-          <p className="text-sm text-chrome-mid">Enter a valid postal code to see shipping options.</p>
+          <p className="text-sm text-chrome-mid">
+            {ratesError || "Calculating Canada Post shipping for your postal code…"}
+          </p>
+        )}
+        {!ratesLoading && postalCode.replace(/\s/g, "").length < 6 && (
+          <p className="text-sm text-chrome-mid">
+            Enter your postal code to see Canada Post shipping options and provincial tax.
+          </p>
         )}
         <div className="space-y-3">
           {displaySummary.rates.map((rate) => (
@@ -394,7 +421,9 @@ export function CheckoutForm({
         </Button>
         {!rateSummary && postalCode.replace(/\s/g, "").length >= 6 && !ratesLoading && (
           <p className="text-xs text-chrome-mid">
-            Complete your address to calculate shipping and taxes before placing your order.
+            {ratesError
+              ? ratesError
+              : "Select a delivery method above once shipping rates load."}
           </p>
         )}
       </form>

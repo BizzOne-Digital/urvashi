@@ -57,7 +57,8 @@ export async function POST(request: NextRequest) {
       cart.fixedSubtotal,
       shippingCost,
       settings,
-      parsed.data.province
+      parsed.data.province,
+      parsed.data.postalCode
     );
 
     const total = Math.round((cart.fixedSubtotal + shippingCost + tax) * 100) / 100;

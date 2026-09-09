@@ -43,7 +43,8 @@ export function calculateOrderTax(
   subtotal: number,
   shippingCost: number,
   settings: ISiteSettings,
-  province?: string
+  province?: string,
+  postalCode?: string
 ): { tax: number; taxLabel?: string } {
   const mode = settings.commerce?.taxMode || "canadian";
 
@@ -60,7 +61,7 @@ export function calculateOrderTax(
     };
   }
 
-  const breakdown = calculateCanadianTax(subtotal, shippingCost, province);
+  const breakdown = calculateCanadianTax(subtotal, shippingCost, province, postalCode);
   if (breakdown) {
     return { tax: breakdown.total, taxLabel: breakdown.label };
   }
@@ -99,7 +100,8 @@ export async function calculateOrderTotals(input: OrderTotalsInput): Promise<Ord
     subtotal,
     shippingCost,
     settings,
-    shipping?.province
+    shipping?.province,
+    shipping?.postalCode
   );
 
   return {

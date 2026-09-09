@@ -59,6 +59,51 @@ const PROVINCE_TAX: Record<
   YT: { label: "GST 5%", gst: 0.05 },
 };
 
+export const CANADIAN_PROVINCES: { code: string; name: string }[] = [
+  { code: "AB", name: "Alberta" },
+  { code: "BC", name: "British Columbia" },
+  { code: "MB", name: "Manitoba" },
+  { code: "NB", name: "New Brunswick" },
+  { code: "NL", name: "Newfoundland and Labrador" },
+  { code: "NS", name: "Nova Scotia" },
+  { code: "NT", name: "Northwest Territories" },
+  { code: "NU", name: "Nunavut" },
+  { code: "ON", name: "Ontario" },
+  { code: "PE", name: "Prince Edward Island" },
+  { code: "QC", name: "Quebec" },
+  { code: "SK", name: "Saskatchewan" },
+  { code: "YT", name: "Yukon" },
+];
+
+/** Infer province from the first letter of a Canadian postal code (FSA region). */
+export function provinceFromPostalCode(postal?: string): string | null {
+  const normalized = (postal || "").replace(/\s+/g, "").toUpperCase();
+  if (normalized.length < 1) return null;
+
+  const regionMap: Record<string, string> = {
+    A: "NL",
+    B: "NS",
+    C: "PE",
+    E: "NB",
+    G: "QC",
+    H: "QC",
+    J: "QC",
+    K: "ON",
+    L: "ON",
+    M: "ON",
+    N: "ON",
+    P: "ON",
+    R: "MB",
+    S: "SK",
+    T: "AB",
+    V: "BC",
+    X: "NT",
+    Y: "YT",
+  };
+
+  return regionMap[normalized[0]] || null;
+}
+
 export function normalizeProvinceCode(province?: string): string | null {
   if (!province?.trim()) return null;
   const key = province.trim().toLowerCase();
@@ -68,6 +113,10 @@ export function normalizeProvinceCode(province?: string): string | null {
   return null;
 }
 
+export function resolveTaxProvince(province?: string, postalCode?: string): string | null {
+  return normalizeProvinceCode(province) || provinceFromPostalCode(postalCode);
+}
+
 function round2(n: number) {
   return Math.round(n * 100) / 100;
 }
@@ -75,9 +124,10 @@ function round2(n: number) {
 export function calculateCanadianTax(
   subtotal: number,
   shippingCost: number,
-  province?: string
+  province?: string,
+  postalCode?: string
 ): TaxBreakdown | null {
-  const code = normalizeProvinceCode(province);
+  const code = resolveTaxProvince(province, postalCode);
   if (!code) return null;
 
   const rates = PROVINCE_TAX[code];

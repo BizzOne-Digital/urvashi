@@ -55,14 +55,35 @@ function isCanadaPostConfigured(): boolean {
 
 function parsePriceQuotes(xml: string, serviceCodes: string[]): Map<string, number> {
   const prices = new Map<string, number>();
+  const quoteBlocks = xml.match(/<price-quote>[\s\S]*?<\/price-quote>/gi) || [];
+
+  for (const block of quoteBlocks) {
+    const codeMatch = block.match(/<service-code>([^<]+)<\/service-code>/i);
+    if (!codeMatch) continue;
+
+    const code = codeMatch[1].trim();
+    if (!serviceCodes.includes(code)) continue;
+
+    const amountMatch = block.match(
+      /<(?:due|due-amount|price)>([\d.]+)<\/(?:due|due-amount|price)>/i
+    );
+    if (amountMatch) {
+      prices.set(code, parseFloat(amountMatch[1]));
+    }
+  }
+
+  if (prices.size > 0) return prices;
+
+  // Fallback: scan the full document per service code
   for (const code of serviceCodes) {
     const blockRegex = new RegExp(
-      `<service-code>${code}</service-code>[\\s\\S]*?<price>([\\d.]+)</price>`,
+      `<service-code>${code}</service-code>[\\s\\S]*?<(?:due|due-amount|price)>([\\d.]+)<`,
       "i"
     );
     const match = xml.match(blockRegex);
     if (match) prices.set(code, parseFloat(match[1]));
   }
+
   return prices;
 }
 
@@ -205,6 +226,38 @@ export async function getShippingRates(
 
   if (options.pickupEnabled) {
     quotes.push(buildPickupQuote(currency));
+  }
+
+  if (quotes.length === 0) {
+    const fallback = estimateRates(parcel);
+    const standardPrice = fallback.get(SHIPPING_METHODS.canada_post_standard.serviceCode);
+    const expressPrice = fallback.get(SHIPPING_METHODS.canada_post_express.serviceCode);
+
+    if (standardPrice != null) {
+      quotes.push({
+        id: "canada_post_standard",
+        serviceCode: SHIPPING_METHODS.canada_post_standard.serviceCode,
+        label: SHIPPING_METHODS.canada_post_standard.label,
+        description: SHIPPING_METHODS.canada_post_standard.description,
+        price: standardPrice,
+        currency,
+        estimatedDays: "3–7 business days",
+        tracked: true,
+      });
+    }
+
+    if (expressPrice != null) {
+      quotes.push({
+        id: "canada_post_express",
+        serviceCode: SHIPPING_METHODS.canada_post_express.serviceCode,
+        label: SHIPPING_METHODS.canada_post_express.label,
+        description: SHIPPING_METHODS.canada_post_express.description,
+        price: expressPrice,
+        currency,
+        estimatedDays: "1–3 business days",
+        tracked: true,
+      });
+    }
   }
 
   return quotes;
