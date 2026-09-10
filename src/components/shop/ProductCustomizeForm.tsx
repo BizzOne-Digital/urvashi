@@ -344,7 +344,7 @@ export function ProductCustomizeForm({ product, monerisMode = "qa" }: ProductCus
           <p className="mt-3 text-chrome-light">
             {isCalendar
               ? "Upload 12 photos — one for each month — and preview how your desk calendar will look before you pay."
-              : "Upload your image to see it on the product. Drag to move it, stretch width/height, or tap Fill print area to cover the product."}
+              : "Upload your image to see it on the product. Drag to move it, or pull the corner handles to stretch it like a window."}
           </p>
 
           {isCalendar ? (

@@ -4,7 +4,8 @@ import { useCallback, useRef } from "react";
 import Image from "next/image";
 import { DEFAULT_PRINT_AREA, getCollageGridLayout, type PrintAreaRect } from "@/lib/mockup-preview";
 import {
-  artworkTransformToCss,
+  artworkBoxToTransform,
+  artworkTransformToBox,
   DEFAULT_ARTWORK_TRANSFORM,
   FILL_PRINT_AREA_TRANSFORM,
   type ArtworkTransform,
@@ -26,11 +27,61 @@ interface ProductMockupPreviewProps {
   onArtworkTransformChange?: (transform: ArtworkTransform) => void;
 }
 
+type ResizeHandle = "nw" | "n" | "ne" | "e" | "se" | "s" | "sw" | "w";
+
 const FIT_CLASS: Record<ArtworkTransform["fit"], string> = {
   cover: "object-cover",
   fill: "object-fill",
   contain: "object-contain",
 };
+
+const HANDLE_POSITIONS: Record<
+  ResizeHandle,
+  { className: string; cursor: string }
+> = {
+  nw: { className: "-left-1.5 -top-1.5", cursor: "cursor-nwse-resize" },
+  n: { className: "left-1/2 -top-1.5 -translate-x-1/2", cursor: "cursor-ns-resize" },
+  ne: { className: "-right-1.5 -top-1.5", cursor: "cursor-nesw-resize" },
+  e: { className: "-right-1.5 top-1/2 -translate-y-1/2", cursor: "cursor-ew-resize" },
+  se: { className: "-right-1.5 -bottom-1.5", cursor: "cursor-nwse-resize" },
+  s: { className: "left-1/2 -bottom-1.5 -translate-x-1/2", cursor: "cursor-ns-resize" },
+  sw: { className: "-left-1.5 -bottom-1.5", cursor: "cursor-nesw-resize" },
+  w: { className: "-left-1.5 top-1/2 -translate-y-1/2", cursor: "cursor-ew-resize" },
+};
+
+function resizeBoxFromHandle(
+  handle: ResizeHandle,
+  base: { cx: number; cy: number; w: number; h: number },
+  dxPct: number,
+  dyPct: number
+) {
+  const halfW = base.w / 2;
+  const halfH = base.h / 2;
+  const left = base.cx - halfW;
+  const right = base.cx + halfW;
+  const top = base.cy - halfH;
+  const bottom = base.cy + halfH;
+
+  let nextLeft = left;
+  let nextRight = right;
+  let nextTop = top;
+  let nextBottom = bottom;
+
+  if (handle.includes("w")) nextLeft += dxPct;
+  if (handle.includes("e")) nextRight += dxPct;
+  if (handle.includes("n")) nextTop += dyPct;
+  if (handle.includes("s")) nextBottom += dyPct;
+
+  const w = Math.max(15, nextRight - nextLeft);
+  const h = Math.max(15, nextBottom - nextTop);
+
+  return {
+    cx: (nextLeft + nextRight) / 2,
+    cy: (nextTop + nextBottom) / 2,
+    w,
+    h,
+  };
+}
 
 export function ProductMockupPreview({
   productName,
@@ -49,11 +100,23 @@ export function ProductMockupPreview({
   const visibleUrls = artworkUrls.filter(Boolean);
   const isSingleImage = visibleUrls.length === 1;
   const canAdjust = interactive && isSingleImage && Boolean(onArtworkTransformChange);
-  const dragRef = useRef<{ startX: number; startY: number; baseX: number; baseY: number } | null>(null);
+  const printAreaRef = useRef<HTMLDivElement>(null);
+  const interactionRef = useRef<
+    | {
+        mode: "move" | "resize";
+        handle?: ResizeHandle;
+        startX: number;
+        startY: number;
+        baseBox: { cx: number; cy: number; w: number; h: number };
+        baseTransform: ArtworkTransform;
+      }
+    | null
+  >(null);
 
   const { cols, rows } = getCollageGridLayout(visibleUrls.length);
   const slots = Math.max(cols * rows, 1);
   const collageUrls = visibleUrls.slice(0, slots);
+  const artworkBox = artworkTransformToBox(artworkTransform);
 
   const updateTransform = useCallback(
     (patch: Partial<ArtworkTransform>) => {
@@ -62,30 +125,71 @@ export function ProductMockupPreview({
     [artworkTransform, onArtworkTransformChange]
   );
 
-  const handlePointerDown = (event: React.PointerEvent<HTMLImageElement>) => {
-    if (!canAdjust) return;
-    event.currentTarget.setPointerCapture(event.pointerId);
-    dragRef.current = {
-      startX: event.clientX,
-      startY: event.clientY,
-      baseX: artworkTransform.offsetX,
-      baseY: artworkTransform.offsetY,
+  const applyBox = useCallback(
+    (box: { cx: number; cy: number; w: number; h: number }, fit: ArtworkTransform["fit"] = "fill") => {
+      onArtworkTransformChange?.(
+        artworkBoxToTransform(box.cx, box.cy, box.w, box.h, artworkTransform.scale, fit)
+      );
+    },
+    [artworkTransform.scale, onArtworkTransformChange]
+  );
+
+  const getDeltaPercent = (clientX: number, clientY: number) => {
+    const rect = printAreaRef.current?.getBoundingClientRect();
+    if (!rect) return { dxPct: 0, dyPct: 0 };
+    return {
+      dxPct: ((clientX - interactionRef.current!.startX) / rect.width) * 100,
+      dyPct: ((clientY - interactionRef.current!.startY) / rect.height) * 100,
     };
   };
 
-  const handlePointerMove = (event: React.PointerEvent<HTMLImageElement>) => {
-    if (!canAdjust || !dragRef.current) return;
-    const dx = ((event.clientX - dragRef.current.startX) / 140) * 100;
-    const dy = ((event.clientY - dragRef.current.startY) / 140) * 100;
-    updateTransform({
-      offsetX: Math.round(Math.max(-80, Math.min(80, dragRef.current.baseX + dx))),
-      offsetY: Math.round(Math.max(-80, Math.min(80, dragRef.current.baseY + dy))),
-    });
+  const handlePointerDown = (
+    event: React.PointerEvent<HTMLElement>,
+    mode: "move" | "resize",
+    handle?: ResizeHandle
+  ) => {
+    if (!canAdjust) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const boxEl = (event.currentTarget as HTMLElement).closest("[data-artwork-box]") as HTMLElement | null;
+    boxEl?.setPointerCapture(event.pointerId);
+    interactionRef.current = {
+      mode,
+      handle,
+      startX: event.clientX,
+      startY: event.clientY,
+      baseBox: artworkTransformToBox(artworkTransform),
+      baseTransform: artworkTransform,
+    };
   };
 
-  const handlePointerUp = (event: React.PointerEvent<HTMLImageElement>) => {
+  const handlePointerMove = (event: React.PointerEvent<HTMLElement>) => {
+    if (!canAdjust || !interactionRef.current) return;
+
+    const { dxPct, dyPct } = getDeltaPercent(event.clientX, event.clientY);
+    const { mode, handle, baseBox, baseTransform } = interactionRef.current;
+
+    if (mode === "move") {
+      applyBox(
+        {
+          cx: baseBox.cx + dxPct,
+          cy: baseBox.cy + dyPct,
+          w: baseBox.w,
+          h: baseBox.h,
+        },
+        baseTransform.fit
+      );
+      return;
+    }
+
+    if (handle) {
+      applyBox(resizeBoxFromHandle(handle, baseBox, dxPct, dyPct), "fill");
+    }
+  };
+
+  const handlePointerUp = (event: React.PointerEvent<HTMLElement>) => {
     if (!canAdjust) return;
-    dragRef.current = null;
+    interactionRef.current = null;
     event.currentTarget.releasePointerCapture(event.pointerId);
   };
 
@@ -108,9 +212,21 @@ export function ProductMockupPreview({
 
           <div
             className={cn(
-              "absolute overflow-hidden border-2 border-cyan/50 bg-white shadow-[inset_0_0_12px_rgba(0,0,0,0.08)]",
-              roundedPrintArea ? "border-cyan/40" : "rounded-sm"
+              "absolute border border-dashed border-cyan/25",
+              roundedPrintArea ? "rounded-md" : "rounded-sm"
             )}
+            style={{
+              left: `${printArea.x}%`,
+              top: `${printArea.y}%`,
+              width: `${printArea.width}%`,
+              height: `${printArea.height}%`,
+              borderRadius: roundedPrintArea ? borderRadius : undefined,
+            }}
+          />
+
+          <div
+            ref={printAreaRef}
+            className={cn("absolute overflow-visible", roundedPrintArea ? "rounded-md" : "rounded-sm")}
             style={{
               left: `${printArea.x}%`,
               top: `${printArea.y}%`,
@@ -121,33 +237,59 @@ export function ProductMockupPreview({
           >
             {collageUrls.length > 0 ? (
               isSingleImage ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={collageUrls[0]}
-                  alt="Your artwork on product"
-                  draggable={false}
-                  className={cn(
-                    "absolute left-1/2 top-1/2 h-full w-full min-h-full min-w-full bg-white",
-                    FIT_CLASS[artworkTransform.fit],
-                    canAdjust && "cursor-grab touch-none active:cursor-grabbing"
-                  )}
+                <div
+                  data-artwork-box
+                  className="absolute touch-none"
                   style={{
-                    transform: `translate(calc(-50% + ${artworkTransform.offsetX}%), calc(-50% + ${artworkTransform.offsetY}%)) ${artworkTransformToCss(
-                      artworkTransform
-                    )}`,
-                    transformOrigin: "center center",
+                    left: `${artworkBox.cx}%`,
+                    top: `${artworkBox.cy}%`,
+                    width: `${artworkBox.w}%`,
+                    height: `${artworkBox.h}%`,
+                    transform: "translate(-50%, -50%)",
                   }}
-                  onPointerDown={handlePointerDown}
                   onPointerMove={handlePointerMove}
                   onPointerUp={handlePointerUp}
                   onPointerCancel={handlePointerUp}
-                />
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={collageUrls[0]}
+                    alt="Your artwork on product"
+                    draggable={false}
+                    className={cn(
+                      "h-full w-full bg-white",
+                      FIT_CLASS[artworkTransform.fit],
+                      canAdjust && "cursor-grab active:cursor-grabbing"
+                    )}
+                    onPointerDown={(event) => handlePointerDown(event, "move")}
+                  />
+
+                  {canAdjust && (
+                    <>
+                      <div className="pointer-events-none absolute inset-0 border-2 border-cyan shadow-[0_0_0_1px_rgba(0,0,0,0.25)]" />
+                      {(Object.keys(HANDLE_POSITIONS) as ResizeHandle[]).map((handle) => (
+                        <button
+                          key={handle}
+                          type="button"
+                          aria-label={`Resize ${handle}`}
+                          className={cn(
+                            "absolute z-10 h-3.5 w-3.5 rounded-sm border-2 border-cyan bg-white shadow-sm touch-none",
+                            HANDLE_POSITIONS[handle].className,
+                            HANDLE_POSITIONS[handle].cursor
+                          )}
+                          onPointerDown={(event) => handlePointerDown(event, "resize", handle)}
+                        />
+                      ))}
+                    </>
+                  )}
+                </div>
               ) : (
                 <div
-                  className="grid h-full w-full gap-px bg-white/20 p-px"
+                  className="grid h-full w-full gap-px overflow-hidden bg-white/20 p-px"
                   style={{
                     gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
                     gridTemplateRows: `repeat(${rows}, minmax(0, 1fr))`,
+                    borderRadius: roundedPrintArea ? borderRadius : undefined,
                   }}
                 >
                   {collageUrls.map((url, index) => (
@@ -174,7 +316,8 @@ export function ProductMockupPreview({
         <div className="mt-4 space-y-3 rounded-lg border border-white/10 bg-white/[0.03] p-4">
           <p className="text-sm font-medium text-pure-paper">Adjust your design on the product</p>
           <p className="text-xs text-chrome-mid">
-            Drag to move. Use stretch sliders to cover the full print area. The cyan box shows where your design prints.
+            Drag the image to move it. Drag the corner or edge handles to stretch it like resizing a window.
+            The dashed outline shows the print area.
           </p>
 
           <div className="flex flex-wrap gap-2">
@@ -212,32 +355,6 @@ export function ProductMockupPreview({
               step={5}
               value={artworkTransform.scale}
               onChange={(e) => updateTransform({ scale: Number(e.target.value) })}
-              className="mt-2 w-full accent-cyan"
-            />
-          </label>
-
-          <label className="block text-xs text-chrome-light">
-            Stretch width ({artworkTransform.scaleX}%)
-            <input
-              type="range"
-              min={50}
-              max={200}
-              step={5}
-              value={artworkTransform.scaleX}
-              onChange={(e) => updateTransform({ scaleX: Number(e.target.value) })}
-              className="mt-2 w-full accent-cyan"
-            />
-          </label>
-
-          <label className="block text-xs text-chrome-light">
-            Stretch height ({artworkTransform.scaleY}%)
-            <input
-              type="range"
-              min={50}
-              max={200}
-              step={5}
-              value={artworkTransform.scaleY}
-              onChange={(e) => updateTransform({ scaleY: Number(e.target.value) })}
               className="mt-2 w-full accent-cyan"
             />
           </label>

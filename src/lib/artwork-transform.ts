@@ -28,6 +28,45 @@ export const FILL_PRINT_AREA_TRANSFORM: ArtworkTransform = {
   fit: "cover",
 };
 
+export interface ArtworkBox {
+  cx: number;
+  cy: number;
+  w: number;
+  h: number;
+}
+
+const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
+
+export function artworkTransformToBox(transform: ArtworkTransform): ArtworkBox {
+  return {
+    cx: 50 + transform.offsetX,
+    cy: 50 + transform.offsetY,
+    w: (transform.scaleX * transform.scale) / 100,
+    h: (transform.scaleY * transform.scale) / 100,
+  };
+}
+
+export function artworkBoxToTransform(
+  cx: number,
+  cy: number,
+  w: number,
+  h: number,
+  scale: number,
+  fit: ArtworkFitMode = "fill"
+): ArtworkTransform {
+  const clampedW = clamp(w, 15, 400);
+  const clampedH = clamp(h, 15, 400);
+
+  return {
+    scale,
+    scaleX: clamp((clampedW * 100) / scale, 30, 400),
+    scaleY: clamp((clampedH * 100) / scale, 30, 400),
+    offsetX: Math.round(clamp(cx - 50, -80, 80)),
+    offsetY: Math.round(clamp(cy - 50, -80, 80)),
+    fit,
+  };
+}
+
 export function artworkTransformToCss(transform: ArtworkTransform): string {
   const sx = (transform.scaleX * transform.scale) / 10000;
   const sy = (transform.scaleY * transform.scale) / 10000;
