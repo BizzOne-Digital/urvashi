@@ -7,6 +7,22 @@ export interface MonerisConfig {
   environment: MonerisEnvironment;
 }
 
+export interface MonerisAddressDetails {
+  address1?: string;
+  address2?: string;
+  city?: string;
+  province?: string;
+  country?: string;
+  postalCode?: string;
+}
+
+export interface MonerisCartItem {
+  description: string;
+  productCode?: string;
+  unitCost: number;
+  quantity?: number;
+}
+
 export interface MonerisPreloadOptions {
   txnTotal: number;
   orderNo?: string;
@@ -15,6 +31,37 @@ export interface MonerisPreloadOptions {
     firstName?: string;
     lastName?: string;
     phone?: string;
+  };
+  shippingDetails?: MonerisAddressDetails;
+  billingDetails?: MonerisAddressDetails;
+  cartItems?: MonerisCartItem[];
+}
+
+function scrubMonerisField(value?: string, max = 50): string | undefined {
+  if (!value?.trim()) return undefined;
+  return value.trim().replace(/[<>$%=?^{}[\]\\]/g, "").slice(0, max);
+}
+
+function toMonerisCountryCode(country?: string): string {
+  const value = (country || "Canada").trim().toUpperCase();
+  if (value === "CA" || value === "CANADA") return "CA";
+  if (value.length === 2) return value;
+  return "CA";
+}
+
+function buildMonerisAddressPayload(details?: MonerisAddressDetails) {
+  const address1 = scrubMonerisField(details?.address1);
+  if (!address1) return undefined;
+
+  const province = scrubMonerisField(details?.province, 3)?.toUpperCase();
+
+  return {
+    address_1: address1,
+    address_2: scrubMonerisField(details?.address2) || "",
+    city: scrubMonerisField(details?.city) || "",
+    province: province || "",
+    country: toMonerisCountryCode(details?.country),
+    postal_code: scrubMonerisField(details?.postalCode?.replace(/\s+/g, " "), 20) || "",
   };
 }
 
@@ -110,6 +157,23 @@ export async function monerisPreload(options: MonerisPreloadOptions): Promise<st
         phone,
       };
     }
+  }
+
+  const shipping = buildMonerisAddressPayload(options.shippingDetails);
+  if (shipping) payload.shipping_details = shipping;
+
+  const billing = buildMonerisAddressPayload(options.billingDetails);
+  if (billing) payload.billing_details = billing;
+
+  if (options.cartItems?.length) {
+    payload.cart = {
+      items: options.cartItems.map((item, index) => ({
+        description: item.description.slice(0, 100),
+        product_code: item.productCode || `ITEM${index + 1}`,
+        unit_cost: item.unitCost.toFixed(2),
+        quantity: String(item.quantity ?? 1),
+      })),
+    };
   }
 
   const data = await monerisRequest(config, payload);

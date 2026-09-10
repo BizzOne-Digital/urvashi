@@ -8,7 +8,13 @@ import { generateOrderNumber } from "@/lib/utils";
 import { getSettings } from "@/lib/settings";
 import { sendEmail } from "@/lib/email";
 import { createStripeCheckoutSession, isStripeConfigured } from "@/lib/stripe";
-import { getPublicMonerisMode, isMonerisConfigured, monerisPreload } from "@/lib/moneris";
+import { normalizeProvinceCode } from "@/lib/canadian-tax";
+import {
+  getPublicMonerisMode,
+  isMonerisConfigured,
+  monerisPreload,
+  type MonerisCartItem,
+} from "@/lib/moneris";
 import { calculateOrderTotals } from "@/lib/order-totals";
 import Order from "@/models/Order";
 import CustomerArtwork from "@/models/CustomerArtwork";
@@ -276,6 +282,44 @@ export async function POST(request: NextRequest) {
     let monerisTicket: string | undefined;
 
     if (useMoneris) {
+      const provinceCode =
+        normalizeProvinceCode(data.shipping?.province) || data.shipping?.province?.trim();
+      const monerisAddress = data.shipping?.address1
+        ? {
+            address1: data.shipping.address1,
+            address2: data.shipping.address2,
+            city: data.shipping.city,
+            province: provinceCode,
+            country: "CA",
+            postalCode: data.shipping.postalCode,
+          }
+        : undefined;
+
+      const cartItems: MonerisCartItem[] = fixedItems.map((item) => ({
+        description: item.productName,
+        productCode: item.sku || item.productSlug,
+        unitCost: item.unitPrice,
+        quantity: item.quantity,
+      }));
+
+      if (shippingCost > 0) {
+        cartItems.push({
+          description: totals.shippingMethodLabel || "Shipping",
+          productCode: "SHIP",
+          unitCost: shippingCost,
+          quantity: 1,
+        });
+      }
+
+      if (tax > 0) {
+        cartItems.push({
+          description: totals.taxLabel || "Tax",
+          productCode: "TAX",
+          unitCost: tax,
+          quantity: 1,
+        });
+      }
+
       monerisTicket = await monerisPreload({
         txnTotal: total,
         orderNo: orderNumber,
@@ -285,6 +329,9 @@ export async function POST(request: NextRequest) {
           lastName: data.customer.lastName,
           phone: data.customer.phone,
         },
+        shippingDetails: monerisAddress,
+        billingDetails: monerisAddress,
+        cartItems,
       });
       order.monerisTicket = monerisTicket;
       await order.save();

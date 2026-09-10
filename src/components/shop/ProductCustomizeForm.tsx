@@ -1,12 +1,14 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button, buttonVariants } from "@/components/ui/Button";
 import { Container } from "@/components/ui/Container";
+import { AddressAutocomplete } from "@/components/checkout/AddressAutocomplete";
 import { MonerisCheckout } from "@/components/payments/MonerisCheckout";
+import { CANADIAN_PROVINCES, normalizeProvinceCode } from "@/lib/canadian-tax";
 import {
   ArtworkMultiUpload,
   getArtworkImagePreviewUrls,
@@ -23,8 +25,14 @@ import {
 } from "@/components/customize/CalendarArtworkUpload";
 import { CalendarMockupPreview } from "@/components/customize/CalendarMockupPreview";
 import { ProductMockupPreview } from "@/components/customize/ProductMockupPreview";
+import {
+  DEFAULT_ARTWORK_TRANSFORM,
+  formatArtworkTransformNote,
+  type ArtworkTransform,
+} from "@/lib/artwork-transform";
 import { CALENDAR_MONTH_COUNT, isCalendarProduct } from "@/lib/calendar-customize";
 import { DESIGN_HELP_SURCHARGE, getProductDisplayImages } from "@/lib/product-catalog";
+import { getProductMockupConfig } from "@/lib/product-mockup-config";
 import { resolveImageSrc } from "@/lib/image-url";
 import { formatCurrency } from "@/lib/utils";
 import { cn } from "@/lib/utils";
@@ -57,36 +65,115 @@ interface PendingMonerisPayment {
   mode: MonerisEnvironment;
 }
 
+interface CustomizeRateSummary {
+  rates: Array<{ id: string; label: string; description: string; price: number; currency: string }>;
+  subtotal: number;
+  designFee: number;
+  shippingCost: number;
+  tax: number;
+  taxLabel?: string;
+  total: number;
+  currency: string;
+}
+
 export function ProductCustomizeForm({ product, monerisMode = "qa" }: ProductCustomizeFormProps) {
   const router = useRouter();
   const { blank, customized } = getProductDisplayImages(product);
-  const baseImage = resolveImageSrc(customized?.url || blank?.url);
-  const printArea = product.customizer?.printArea;
+  const baseImage = resolveImageSrc(blank?.url || customized?.url);
+  const mockupConfig = getProductMockupConfig(product.slug, product.customizer?.printArea);
   const designFee = product.designHelpSurcharge ?? DESIGN_HELP_SURCHARGE;
   const basePrice = product.price ?? 0;
   const isCalendar = isCalendarProduct(product.slug);
 
   const [artworkItems, setArtworkItems] = useState<LocalArtworkFile[]>([]);
+  const [artworkTransform, setArtworkTransform] = useState<ArtworkTransform>(DEFAULT_ARTWORK_TRANSFORM);
   const [calendarSlots, setCalendarSlots] = useState(createEmptyCalendarSlots);
   const [previewMonth, setPreviewMonth] = useState(0);
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [designHelp, setDesignHelp] = useState(false);
   const [pendingPayment, setPendingPayment] = useState<PendingMonerisPayment | null>(null);
+  const [ratesLoading, setRatesLoading] = useState(false);
+  const [rateSummary, setRateSummary] = useState<CustomizeRateSummary | null>(null);
   const [form, setForm] = useState({
     firstName: "",
     lastName: "",
     email: "",
     phone: "",
     quantity: product.minQuantity || 1,
+    address1: "",
+    city: "",
+    province: "",
+    postalCode: "",
+    shippingMethod: "",
     instructions: "",
     rightsConfirmed: false,
   });
 
-  const estimatedTotal = useMemo(
+  const merchandiseTotal = useMemo(
     () => basePrice * form.quantity + (designHelp ? designFee : 0),
     [basePrice, form.quantity, designHelp, designFee]
   );
+
+  const displayTotal = rateSummary?.total ?? merchandiseTotal;
+
+  useEffect(() => {
+    setArtworkTransform(DEFAULT_ARTWORK_TRANSFORM);
+  }, [artworkItems.map((item) => item.key).join("|")]);
+
+  const fetchRates = useCallback(
+    async (postal: string, prov: string, method?: string) => {
+      const normalized = postal.replace(/\s/g, "");
+      if (normalized.length < 6) {
+        setRateSummary(null);
+        return;
+      }
+
+      setRatesLoading(true);
+      try {
+        const res = await fetch("/api/customize/shipping-rates", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            productSlug: product.slug,
+            quantity: form.quantity,
+            preferDesign: designHelp,
+            postalCode: postal,
+            province: prov || undefined,
+            shippingMethod: method || undefined,
+          }),
+        });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error || "Could not load shipping rates");
+        if (!json.rates?.length) throw new Error("No shipping options available for this postal code");
+
+        setRateSummary(json);
+        if (json.selectedMethod) {
+          setForm((prev) => ({ ...prev, shippingMethod: json.selectedMethod }));
+        }
+      } catch (err) {
+        setRateSummary(null);
+        toast.error(err instanceof Error ? err.message : "Shipping rates unavailable");
+      } finally {
+        setRatesLoading(false);
+      }
+    },
+    [product.slug, form.quantity, designHelp]
+  );
+
+  useEffect(() => {
+    const normalized = form.postalCode.replace(/\s/g, "");
+    if (normalized.length < 6) {
+      setRateSummary(null);
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      fetchRates(form.postalCode, form.province, form.shippingMethod || undefined);
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [form.postalCode, form.province, form.shippingMethod, designHelp, form.quantity, fetchRates]);
 
   const removeArtwork = (key: string) => {
     const target = artworkItems.find((item) => item.key === key);
@@ -142,6 +229,14 @@ export function ProductCustomizeForm({ product, monerisMode = "qa" }: ProductCus
       toast.error("Please describe what you want in your design");
       return;
     }
+    if (!form.address1.trim() || !form.city.trim() || !form.province.trim()) {
+      toast.error("Please complete your shipping address");
+      return;
+    }
+    if (!rateSummary || !form.shippingMethod) {
+      toast.error("Please wait for shipping and tax to be calculated");
+      return;
+    }
 
     setSubmitting(true);
     try {
@@ -155,6 +250,10 @@ export function ProductCustomizeForm({ product, monerisMode = "qa" }: ProductCus
       const calendarNote = isCalendar
         ? "Desk calendar — monthly photos uploaded in order from January through December."
         : undefined;
+      const placementNote =
+        !isCalendar && artworkItems.length === 1
+          ? formatArtworkTransformNote(artworkTransform)
+          : undefined;
 
       const res = await fetch("/api/customize/checkout", {
         method: "POST",
@@ -164,12 +263,20 @@ export function ProductCustomizeForm({ product, monerisMode = "qa" }: ProductCus
           lastName: form.lastName,
           email: form.email,
           phone: form.phone,
-          message: [calendarNote, form.instructions].filter(Boolean).join("\n\n"),
+          message: [calendarNote, placementNote, form.instructions].filter(Boolean).join("\n\n"),
           artworkAssetIds: artworkIds,
           preferDesign: designHelp,
           productSlug: product.slug,
           productName: product.name,
           quantity: form.quantity,
+          shipping: {
+            address1: form.address1,
+            city: form.city,
+            province: form.province,
+            postalCode: form.postalCode,
+            country: "Canada",
+            method: form.shippingMethod,
+          },
           consentGiven: true,
         }),
       });
@@ -235,7 +342,7 @@ export function ProductCustomizeForm({ product, monerisMode = "qa" }: ProductCus
           <p className="mt-3 text-chrome-light">
             {isCalendar
               ? "Upload 12 photos — one for each month — and preview how your desk calendar will look before you pay."
-              : "Upload your images (add multiple for collages), pay now through Moneris, and we will contact you to confirm before production."}
+              : "Upload your image to see it on the product. Drag to reposition and use the zoom slider to adjust before you pay."}
           </p>
 
           {isCalendar ? (
@@ -256,7 +363,12 @@ export function ProductCustomizeForm({ product, monerisMode = "qa" }: ProductCus
                 productName={product.name}
                 baseImageSrc={baseImage}
                 artworkUrls={getArtworkImagePreviewUrls(artworkItems)}
-                printArea={printArea}
+                printArea={mockupConfig.printArea}
+                roundedPrintArea={mockupConfig.rounded}
+                borderRadius={mockupConfig.borderRadius}
+                interactive
+                artworkTransform={artworkTransform}
+                onArtworkTransformChange={setArtworkTransform}
                 disclaimer={
                   product.customizer?.previewDisclaimer ||
                   "Rough draft only — final placement, colour, and sizing may vary slightly."
@@ -371,18 +483,115 @@ export function ProductCustomizeForm({ product, monerisMode = "qa" }: ProductCus
             I confirm I have the rights to use this artwork for printing.
           </label>
 
+          <h2 className="font-display text-lg font-semibold text-pure-paper pt-2">Shipping address</h2>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-pure-paper">Address line 1</label>
+            <AddressAutocomplete
+              id="customize-address1"
+              value={form.address1}
+              cityHint={form.city}
+              onChange={(value) => setForm((prev) => ({ ...prev, address1: value }))}
+              onAddressSelect={(addr) => {
+                setForm((prev) => ({
+                  ...prev,
+                  address1: addr.address1,
+                  city: addr.city || prev.city,
+                  province: addr.province ? normalizeProvinceCode(addr.province) || addr.province : prev.province,
+                  postalCode: addr.postalCode || prev.postalCode,
+                }));
+              }}
+              className={fieldClass}
+              placeholder="e.g. 28 Sinclair St"
+            />
+          </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <div>
+              <label className="mb-1 block text-sm font-medium text-pure-paper">City</label>
+              <input required className={fieldClass} value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-pure-paper">Province</label>
+              <select required className={fieldClass} value={form.province} onChange={(e) => setForm({ ...form, province: e.target.value })}>
+                <option value="">Select province</option>
+                {CANADIAN_PROVINCES.map((p) => (
+                  <option key={p.code} value={p.code}>{p.name}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-pure-paper">Postal code</label>
+              <input required className={fieldClass} value={form.postalCode} onChange={(e) => setForm({ ...form, postalCode: e.target.value })} />
+            </div>
+          </div>
+
+          <h2 className="font-display text-lg font-semibold text-pure-paper">Delivery method</h2>
+          {ratesLoading && <p className="text-sm text-chrome-mid">Calculating Canada Post rates…</p>}
+          <div className="space-y-3">
+            {(rateSummary?.rates || []).map((rate) => (
+              <label
+                key={rate.id}
+                className={`flex cursor-pointer items-start gap-3 rounded-sm border p-4 transition-colors ${
+                  form.shippingMethod === rate.id
+                    ? "border-cyan bg-cyan/10"
+                    : "border-white/10 hover:border-cyan/40"
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="shippingMethod"
+                  value={rate.id}
+                  checked={form.shippingMethod === rate.id}
+                  className="mt-1"
+                  onChange={() => {
+                    setForm((prev) => ({ ...prev, shippingMethod: rate.id }));
+                    fetchRates(form.postalCode, form.province, rate.id);
+                  }}
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium text-pure-paper">{rate.label}</p>
+                  <p className="text-sm text-chrome-mid">{rate.description}</p>
+                </div>
+                <span className="shrink-0 font-semibold text-pure-paper">
+                  {rate.price === 0 ? "Free" : formatCurrency(rate.price, rate.currency)}
+                </span>
+              </label>
+            ))}
+          </div>
+
           <div className="rounded-lg border border-white/10 bg-white/[0.03] p-4 text-sm">
-            <p className="font-semibold text-pure-paper">Total due today</p>
-            <p className="text-2xl font-bold text-cyan">{formatCurrency(estimatedTotal, product.currency)}</p>
-            <p className="mt-1 text-chrome-mid">
-              Includes customization starting at {formatCurrency(basePrice, product.currency)} each
-              {designHelp ? ` plus ${formatCurrency(designFee, product.currency)} design service` : ""}.
-            </p>
+            <p className="font-semibold text-pure-paper">Order total</p>
+            <div className="mt-3 space-y-2 text-chrome-light">
+              <p className="flex justify-between">
+                <span>Product</span>
+                <span>{formatCurrency(rateSummary?.subtotal ?? basePrice * form.quantity, product.currency)}</span>
+              </p>
+              {designHelp && (
+                <p className="flex justify-between">
+                  <span>Design service</span>
+                  <span>{formatCurrency(rateSummary?.designFee ?? designFee, product.currency)}</span>
+                </p>
+              )}
+              <p className="flex justify-between">
+                <span>Shipping</span>
+                <span>{rateSummary ? formatCurrency(rateSummary.shippingCost, rateSummary.currency) : "—"}</span>
+              </p>
+              <p className="flex justify-between">
+                <span>{rateSummary?.taxLabel || "Tax"}</span>
+                <span>{rateSummary ? formatCurrency(rateSummary.tax, rateSummary.currency) : "—"}</span>
+              </p>
+              <p className="flex justify-between border-t border-white/10 pt-2 text-lg font-bold text-cyan">
+                <span>Total due today</span>
+                <span>{formatCurrency(displayTotal, product.currency)}</span>
+              </p>
+            </div>
+            {!rateSummary && form.postalCode.replace(/\s/g, "").length >= 6 && !ratesLoading && (
+              <p className="mt-2 text-xs text-chrome-mid">Enter your address and postal code to calculate shipping and tax.</p>
+            )}
           </div>
 
           <div className="flex flex-wrap gap-3">
-            <Button type="submit" disabled={submitting || uploading}>
-              {submitting || uploading ? "Processing…" : `Pay ${formatCurrency(estimatedTotal, product.currency)} now`}
+            <Button type="submit" disabled={submitting || uploading || ratesLoading || !rateSummary}>
+              {submitting || uploading ? "Processing…" : `Pay ${formatCurrency(displayTotal, product.currency)} now`}
             </Button>
             <Link href={`/shop/${product.slug}`} className={buttonVariants("secondary")}>Back to product</Link>
           </div>

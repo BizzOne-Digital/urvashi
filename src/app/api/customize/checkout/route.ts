@@ -21,6 +21,16 @@ const checkoutSchema = z
     productSlug: z.string().max(120).optional(),
     productName: z.string().max(200).optional(),
     quantity: z.coerce.number().int().positive().max(10000).optional(),
+    shipping: z
+      .object({
+        address1: z.string().min(1).max(200),
+        city: z.string().min(1).max(100),
+        province: z.string().min(1).max(100),
+        postalCode: z.string().min(6).max(20),
+        country: z.string().max(100).optional(),
+        method: z.string().min(1).max(100),
+      })
+      .optional(),
     consentGiven: z.literal(true, {
       errorMap: () => ({ message: "Consent is required" }),
     }),
@@ -57,6 +67,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (data.productSlug) {
+      if (!data.shipping?.address1?.trim()) {
+        return NextResponse.json({ error: "Shipping address is required" }, { status: 400 });
+      }
+      if (!data.shipping.postalCode?.trim() || data.shipping.postalCode.replace(/\s/g, "").length < 6) {
+        return NextResponse.json({ error: "Valid postal code is required" }, { status: 400 });
+      }
+      if (!data.shipping.method) {
+        return NextResponse.json({ error: "Please select a shipping method" }, { status: 400 });
+      }
+    }
+
     if (!isMonerisConfigured()) {
       return NextResponse.json(
         {
@@ -84,6 +106,7 @@ export async function POST(request: NextRequest) {
       productSlug: data.productSlug,
       productName: data.productName,
       quantity: data.quantity,
+      shipping: data.shipping,
     });
 
     const ticket = await startCustomizeCheckout(submission, totalDue);

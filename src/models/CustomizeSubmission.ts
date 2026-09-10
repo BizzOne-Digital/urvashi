@@ -15,6 +15,17 @@ export interface ICustomizeSubmission extends Document {
   preferDesign: boolean;
   baseFee: number;
   designFee: number;
+  shippingCost: number;
+  tax: number;
+  taxLabel?: string;
+  shippingMethod?: string;
+  shipping?: {
+    address1?: string;
+    city?: string;
+    province?: string;
+    postalCode?: string;
+    country?: string;
+  };
   totalPaid: number;
   currency: string;
   paymentStatus: "not_required" | "pending" | "paid" | "failed";
@@ -42,6 +53,17 @@ const CustomizeSubmissionSchema = new Schema<ICustomizeSubmission>(
     preferDesign: { type: Boolean, default: false },
     baseFee: { type: Number, default: 0 },
     designFee: { type: Number, default: 0 },
+    shippingCost: { type: Number, default: 0 },
+    tax: { type: Number, default: 0 },
+    taxLabel: String,
+    shippingMethod: String,
+    shipping: {
+      address1: String,
+      city: String,
+      province: String,
+      postalCode: String,
+      country: String,
+    },
     totalPaid: { type: Number, default: 0 },
     currency: { type: String, default: "CAD" },
     paymentStatus: {

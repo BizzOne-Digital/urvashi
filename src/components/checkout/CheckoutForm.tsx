@@ -95,6 +95,7 @@ export function CheckoutForm({
   });
 
   const address1 = watch("address1") || "";
+  const city = watch("city") || "";
   const postalCode = watch("postalCode") || "";
   const province = watch("province") || "";
   const shippingMethod = watch("shippingMethod") || "";
@@ -297,6 +298,7 @@ export function CheckoutForm({
           <AddressAutocomplete
             id="address1"
             value={address1}
+            cityHint={city}
             onChange={(v) => setValue("address1", v, { shouldValidate: true })}
             onAddressSelect={(addr) => {
               setValue("address1", addr.address1, { shouldValidate: true });

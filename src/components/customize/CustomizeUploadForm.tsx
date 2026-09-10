@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -18,7 +18,13 @@ import {
   uploadPendingArtworkItems,
 } from "@/components/customize/ArtworkMultiUpload";
 import { ProductMockupPreview } from "@/components/customize/ProductMockupPreview";
+import {
+  DEFAULT_ARTWORK_TRANSFORM,
+  formatArtworkTransformNote,
+  type ArtworkTransform,
+} from "@/lib/artwork-transform";
 import { getProductDisplayImages } from "@/lib/product-catalog";
+import { getProductMockupConfig } from "@/lib/product-mockup-config";
 import { resolveImageSrc } from "@/lib/image-url";
 import { cn, formatCurrency } from "@/lib/utils";
 
@@ -79,6 +85,7 @@ export function CustomizeUploadForm({
   const [submitting, setSubmitting] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [artworkItems, setArtworkItems] = useState<LocalArtworkFile[]>([]);
+  const [artworkTransform, setArtworkTransform] = useState<ArtworkTransform>(DEFAULT_ARTWORK_TRANSFORM);
   const [selectedProductId, setSelectedProductId] = useState(previewProducts[0]?._id || "");
   const [pendingPayment, setPendingPayment] = useState<PendingMonerisPayment | null>(null);
 
@@ -86,8 +93,11 @@ export function CustomizeUploadForm({
     previewProducts.find((product) => product._id === selectedProductId) || previewProducts[0];
   const previewImages = selectedProduct ? getProductDisplayImages(selectedProduct) : null;
   const previewBaseImage = previewImages
-    ? resolveImageSrc(previewImages.customized?.url || previewImages.blank?.url)
+    ? resolveImageSrc(previewImages.blank?.url || previewImages.customized?.url)
     : "/home/customizer-preview.jpg";
+  const mockupConfig = selectedProduct
+    ? getProductMockupConfig(selectedProduct.slug, selectedProduct.customizer?.printArea)
+    : getProductMockupConfig();
 
   const {
     register,
@@ -105,6 +115,10 @@ export function CustomizeUploadForm({
   const consentGiven = watch("consentGiven");
   const message = watch("message");
   const totalToday = baseFee + (preferDesign ? designFee : 0);
+
+  useEffect(() => {
+    setArtworkTransform(DEFAULT_ARTWORK_TRANSFORM);
+  }, [artworkItems.map((item) => item.key).join("|"), selectedProductId]);
 
   const fieldClass =
     "w-full rounded-sm border border-white/15 bg-[#12141c] px-4 py-3 text-sm text-pure-paper placeholder:text-chrome-mid focus:border-cyan/50 focus:outline-none focus:ring-2 focus:ring-cyan/25";
@@ -138,7 +152,9 @@ export function CustomizeUploadForm({
           lastName: data.lastName,
           email: data.email,
           phone: data.phone,
-          message: data.message,
+          message: [formatArtworkTransformNote(artworkTransform), data.message]
+            .filter(Boolean)
+            .join("\n\n"),
           artworkAssetIds: artworkIds,
           preferDesign: data.preferDesign,
           consentGiven: true,
@@ -291,7 +307,12 @@ export function CustomizeUploadForm({
         productName={selectedProduct?.name}
         baseImageSrc={previewBaseImage}
         artworkUrls={getArtworkImagePreviewUrls(artworkItems)}
-        printArea={selectedProduct?.customizer?.printArea}
+        printArea={mockupConfig.printArea}
+        roundedPrintArea={mockupConfig.rounded}
+        borderRadius={mockupConfig.borderRadius}
+        interactive
+        artworkTransform={artworkTransform}
+        onArtworkTransformChange={setArtworkTransform}
         disclaimer={
           selectedProduct?.customizer?.previewDisclaimer ||
           "Rough draft only — final placement, colour, and sizing may vary slightly."

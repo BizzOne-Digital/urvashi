@@ -4,12 +4,15 @@ import { getPrivateArtworkBuffer } from "./media";
 import { getSettings } from "./settings";
 import { formatCurrency, generateRequestNumber } from "./utils";
 import { DESIGN_HELP_SURCHARGE } from "./product-catalog";
+import { normalizeProvinceCode } from "./canadian-tax";
+import { calculateCustomizeTotals } from "./customize-totals";
 import {
   getMonerisReceiptAmount,
   isMonerisConfigured,
   isMonerisReceiptApproved,
   monerisPreload,
   monerisReceipt,
+  type MonerisCartItem,
 } from "./moneris";
 import CustomizeSubmission, { type ICustomizeSubmission } from "@/models/CustomizeSubmission";
 import ContactMessage from "@/models/ContactMessage";
@@ -40,6 +43,18 @@ export function getCustomizeDesignFee(): number {
 export function getCustomizeCheckoutTotal(preferDesign: boolean, baseFee: number): number {
   const designFee = preferDesign ? getCustomizeDesignFee() : 0;
   return Math.round((baseFee + designFee) * 100) / 100;
+}
+
+export function getCustomizeSubmissionTotal(submission: ICustomizeSubmission): number {
+  return (
+    Math.round(
+      (submission.baseFee +
+        submission.designFee +
+        (submission.shippingCost || 0) +
+        (submission.tax || 0)) *
+        100
+    ) / 100
+  );
 }
 
 export async function resolveCustomizeBaseFee(options: {
@@ -237,7 +252,7 @@ export async function confirmCustomizePayment(ticket: string, referenceNumber: s
   }
 
   const paidAmount = getMonerisReceiptAmount(receipt);
-  const expectedTotal = getCustomizeCheckoutTotal(submission.preferDesign, submission.baseFee);
+  const expectedTotal = getCustomizeSubmissionTotal(submission);
   if (paidAmount !== null && Math.abs(paidAmount - expectedTotal) > 0.02) {
     throw new Error("Payment amount does not match this request");
   }
@@ -267,6 +282,14 @@ export async function createCustomizeSubmission(data: {
   productSlug?: string;
   productName?: string;
   quantity?: number;
+  shipping?: {
+    address1?: string;
+    city?: string;
+    province?: string;
+    postalCode?: string;
+    country?: string;
+    method?: string;
+  };
 }) {
   await connectDB();
 
@@ -275,7 +298,19 @@ export async function createCustomizeSubmission(data: {
     quantity: data.quantity,
   });
   const designFee = data.preferDesign ? getCustomizeDesignFee() : 0;
-  const totalDue = getCustomizeCheckoutTotal(data.preferDesign, baseFee);
+
+  const totals = await calculateCustomizeTotals({
+    productSlug: data.productSlug,
+    quantity: data.quantity,
+    preferDesign: data.preferDesign,
+    shipping: {
+      postalCode: data.shipping?.postalCode,
+      province: data.shipping?.province,
+      method: data.shipping?.method,
+    },
+  });
+
+  const totalDue = totals.total;
 
   const messageText =
     data.message.trim() ||
@@ -298,16 +333,77 @@ export async function createCustomizeSubmission(data: {
     preferDesign: data.preferDesign,
     baseFee,
     designFee,
+    shippingCost: totals.shippingCost,
+    tax: totals.tax,
+    taxLabel: totals.taxLabel,
+    shippingMethod: totals.shippingMethod,
+    shipping: data.shipping
+      ? {
+          address1: data.shipping.address1,
+          city: data.shipping.city,
+          province: data.shipping.province,
+          postalCode: data.shipping.postalCode,
+          country: data.shipping.country || "Canada",
+        }
+      : undefined,
     totalPaid: 0,
     currency,
     paymentStatus: "pending",
     status: "new",
   });
 
-  return { submission, totalDue };
+  return { submission, totalDue, totals };
 }
 
 export async function startCustomizeCheckout(submission: ICustomizeSubmission, totalDue: number) {
+  const provinceCode =
+    normalizeProvinceCode(submission.shipping?.province) || submission.shipping?.province;
+  const monerisAddress = submission.shipping?.address1
+    ? {
+        address1: submission.shipping.address1,
+        city: submission.shipping.city,
+        province: provinceCode,
+        country: "CA",
+        postalCode: submission.shipping.postalCode,
+      }
+    : undefined;
+
+  const cartItems: MonerisCartItem[] = [
+    {
+      description: submission.productName || "Custom product",
+      productCode: submission.productSlug || "CUSTOM",
+      unitCost: submission.baseFee,
+      quantity: 1,
+    },
+  ];
+
+  if (submission.designFee > 0) {
+    cartItems.push({
+      description: "Design service",
+      productCode: "DESIGN",
+      unitCost: submission.designFee,
+      quantity: 1,
+    });
+  }
+
+  if (submission.shippingCost > 0) {
+    cartItems.push({
+      description: "Shipping",
+      productCode: "SHIP",
+      unitCost: submission.shippingCost,
+      quantity: 1,
+    });
+  }
+
+  if (submission.tax > 0) {
+    cartItems.push({
+      description: submission.taxLabel || "Tax",
+      productCode: "TAX",
+      unitCost: submission.tax,
+      quantity: 1,
+    });
+  }
+
   const ticket = await monerisPreload({
     txnTotal: totalDue,
     orderNo: submission.referenceNumber,
@@ -317,6 +413,9 @@ export async function startCustomizeCheckout(submission: ICustomizeSubmission, t
       lastName: submission.lastName,
       phone: submission.phone,
     },
+    shippingDetails: monerisAddress,
+    billingDetails: monerisAddress,
+    cartItems,
   });
 
   submission.monerisTicket = ticket;
