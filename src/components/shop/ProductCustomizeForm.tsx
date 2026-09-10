@@ -26,7 +26,7 @@ import {
 import { CalendarMockupPreview } from "@/components/customize/CalendarMockupPreview";
 import { ProductMockupPreview } from "@/components/customize/ProductMockupPreview";
 import {
-  DEFAULT_ARTWORK_TRANSFORM,
+  FILL_PRINT_AREA_TRANSFORM,
   formatArtworkTransformNote,
   type ArtworkTransform,
 } from "@/lib/artwork-transform";
@@ -86,7 +86,7 @@ export function ProductCustomizeForm({ product, monerisMode = "qa" }: ProductCus
   const isCalendar = isCalendarProduct(product.slug);
 
   const [artworkItems, setArtworkItems] = useState<LocalArtworkFile[]>([]);
-  const [artworkTransform, setArtworkTransform] = useState<ArtworkTransform>(DEFAULT_ARTWORK_TRANSFORM);
+  const [artworkTransform, setArtworkTransform] = useState<ArtworkTransform>(FILL_PRINT_AREA_TRANSFORM);
   const [calendarSlots, setCalendarSlots] = useState(createEmptyCalendarSlots);
   const [previewMonth, setPreviewMonth] = useState(0);
   const [uploading, setUploading] = useState(false);
@@ -118,7 +118,9 @@ export function ProductCustomizeForm({ product, monerisMode = "qa" }: ProductCus
   const displayTotal = rateSummary?.total ?? merchandiseTotal;
 
   useEffect(() => {
-    setArtworkTransform(DEFAULT_ARTWORK_TRANSFORM);
+    if (artworkItems.length > 0) {
+      setArtworkTransform(FILL_PRINT_AREA_TRANSFORM);
+    }
   }, [artworkItems.map((item) => item.key).join("|")]);
 
   const fetchRates = useCallback(
@@ -342,7 +344,7 @@ export function ProductCustomizeForm({ product, monerisMode = "qa" }: ProductCus
           <p className="mt-3 text-chrome-light">
             {isCalendar
               ? "Upload 12 photos — one for each month — and preview how your desk calendar will look before you pay."
-              : "Upload your image to see it on the product. Drag to reposition and use the zoom slider to adjust before you pay."}
+              : "Upload your image to see it on the product. Drag to move it, stretch width/height, or tap Fill print area to cover the product."}
           </p>
 
           {isCalendar ? (

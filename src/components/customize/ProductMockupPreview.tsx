@@ -6,6 +6,7 @@ import { DEFAULT_PRINT_AREA, getCollageGridLayout, type PrintAreaRect } from "@/
 import {
   artworkTransformToCss,
   DEFAULT_ARTWORK_TRANSFORM,
+  FILL_PRINT_AREA_TRANSFORM,
   type ArtworkTransform,
 } from "@/lib/artwork-transform";
 import { cn } from "@/lib/utils";
@@ -24,6 +25,12 @@ interface ProductMockupPreviewProps {
   artworkTransform?: ArtworkTransform;
   onArtworkTransformChange?: (transform: ArtworkTransform) => void;
 }
+
+const FIT_CLASS: Record<ArtworkTransform["fit"], string> = {
+  cover: "object-cover",
+  fill: "object-fill",
+  contain: "object-contain",
+};
 
 export function ProductMockupPreview({
   productName,
@@ -68,11 +75,11 @@ export function ProductMockupPreview({
 
   const handlePointerMove = (event: React.PointerEvent<HTMLImageElement>) => {
     if (!canAdjust || !dragRef.current) return;
-    const dx = ((event.clientX - dragRef.current.startX) / 180) * 100;
-    const dy = ((event.clientY - dragRef.current.startY) / 180) * 100;
+    const dx = ((event.clientX - dragRef.current.startX) / 140) * 100;
+    const dy = ((event.clientY - dragRef.current.startY) / 140) * 100;
     updateTransform({
-      offsetX: Math.round(Math.max(-40, Math.min(40, dragRef.current.baseX + dx))),
-      offsetY: Math.round(Math.max(-40, Math.min(40, dragRef.current.baseY + dy))),
+      offsetX: Math.round(Math.max(-80, Math.min(80, dragRef.current.baseX + dx))),
+      offsetY: Math.round(Math.max(-80, Math.min(80, dragRef.current.baseY + dy))),
     });
   };
 
@@ -101,8 +108,8 @@ export function ProductMockupPreview({
 
           <div
             className={cn(
-              "absolute overflow-hidden border border-cyan/35 bg-white/5 shadow-[inset_0_0_20px_rgba(0,0,0,0.12)]",
-              roundedPrintArea ? "border-cyan/25" : "rounded-sm border-dashed border-cyan/40"
+              "absolute overflow-hidden border-2 border-cyan/50 bg-white shadow-[inset_0_0_12px_rgba(0,0,0,0.08)]",
+              roundedPrintArea ? "border-cyan/40" : "rounded-sm"
             )}
             style={{
               left: `${printArea.x}%`,
@@ -120,11 +127,14 @@ export function ProductMockupPreview({
                   alt="Your artwork on product"
                   draggable={false}
                   className={cn(
-                    "h-full w-full bg-white object-cover",
+                    "absolute left-1/2 top-1/2 h-full w-full min-h-full min-w-full bg-white",
+                    FIT_CLASS[artworkTransform.fit],
                     canAdjust && "cursor-grab touch-none active:cursor-grabbing"
                   )}
                   style={{
-                    transform: artworkTransformToCss(artworkTransform),
+                    transform: `translate(calc(-50% + ${artworkTransform.offsetX}%), calc(-50% + ${artworkTransform.offsetY}%)) ${artworkTransformToCss(
+                      artworkTransform
+                    )}`,
                     transformOrigin: "center center",
                   }}
                   onPointerDown={handlePointerDown}
@@ -162,29 +172,75 @@ export function ProductMockupPreview({
 
       {canAdjust && (
         <div className="mt-4 space-y-3 rounded-lg border border-white/10 bg-white/[0.03] p-4">
-          <p className="text-sm font-medium text-pure-paper">Adjust your design</p>
+          <p className="text-sm font-medium text-pure-paper">Adjust your design on the product</p>
           <p className="text-xs text-chrome-mid">
-            Drag the image on the product to reposition it. Use the slider to zoom in or out.
+            Drag to move. Use stretch sliders to cover the full print area. The cyan box shows where your design prints.
           </p>
+
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => onArtworkTransformChange?.(FILL_PRINT_AREA_TRANSFORM)}
+              className="rounded-sm bg-cyan/20 px-3 py-1.5 text-xs font-semibold text-cyan hover:bg-cyan/30"
+            >
+              Fill print area
+            </button>
+            <button
+              type="button"
+              onClick={() =>
+                updateTransform({ fit: "fill", scale: 100, scaleX: 100, scaleY: 100, offsetX: 0, offsetY: 0 })
+              }
+              className="rounded-sm border border-white/15 px-3 py-1.5 text-xs text-pure-paper hover:border-cyan/40"
+            >
+              Stretch to fit
+            </button>
+            <button
+              type="button"
+              onClick={() => onArtworkTransformChange?.(DEFAULT_ARTWORK_TRANSFORM)}
+              className="text-xs text-chrome-mid hover:text-cyan"
+            >
+              Reset
+            </button>
+          </div>
+
           <label className="block text-xs text-chrome-light">
-            Zoom ({artworkTransform.scale}%)
+            Overall zoom ({artworkTransform.scale}%)
             <input
               type="range"
-              min={60}
-              max={160}
+              min={50}
+              max={300}
               step={5}
               value={artworkTransform.scale}
               onChange={(e) => updateTransform({ scale: Number(e.target.value) })}
               className="mt-2 w-full accent-cyan"
             />
           </label>
-          <button
-            type="button"
-            onClick={() => onArtworkTransformChange?.(DEFAULT_ARTWORK_TRANSFORM)}
-            className="text-xs text-cyan hover:underline"
-          >
-            Reset position & zoom
-          </button>
+
+          <label className="block text-xs text-chrome-light">
+            Stretch width ({artworkTransform.scaleX}%)
+            <input
+              type="range"
+              min={50}
+              max={200}
+              step={5}
+              value={artworkTransform.scaleX}
+              onChange={(e) => updateTransform({ scaleX: Number(e.target.value) })}
+              className="mt-2 w-full accent-cyan"
+            />
+          </label>
+
+          <label className="block text-xs text-chrome-light">
+            Stretch height ({artworkTransform.scaleY}%)
+            <input
+              type="range"
+              min={50}
+              max={200}
+              step={5}
+              value={artworkTransform.scaleY}
+              onChange={(e) => updateTransform({ scaleY: Number(e.target.value) })}
+              className="mt-2 w-full accent-cyan"
+            />
+          </label>
         </div>
       )}
 

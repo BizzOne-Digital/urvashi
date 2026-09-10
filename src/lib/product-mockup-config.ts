@@ -20,9 +20,9 @@ const PRODUCT_MOCKUP_BY_SLUG: Record<string, ProductMockupConfig> = {
     borderRadius: "10%",
   },
   "sublimation-mug": {
-    printArea: { x: 38, y: 32, width: 28, height: 34 },
+    printArea: { x: 33, y: 24, width: 34, height: 46 },
     rounded: true,
-    borderRadius: "8%",
+    borderRadius: "6%",
   },
   keychains: {
     printArea: { x: 42, y: 38, width: 22, height: 28 },
