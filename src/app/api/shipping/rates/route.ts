@@ -5,6 +5,7 @@ import { loadCalculatedCart } from "@/lib/cart";
 import { connectDB } from "@/lib/db";
 import { getSettings } from "@/lib/settings";
 import { getOriginPostalCode, getShippingRates, isCanadaPostApiEnabled } from "@/lib/canada-post";
+import { formatCanadianPostalCode } from "@/lib/canadian-postal";
 import { calculateParcelFromCart } from "@/lib/shipping-parcel";
 import { calculateOrderTax } from "@/lib/order-totals";
 
@@ -38,13 +39,21 @@ export async function POST(request: NextRequest) {
     const products = await Product.find({ _id: { $in: productIds } });
     const productMap = new Map(products.map((p) => [p._id.toString(), p]));
 
+    const formattedPostal = formatCanadianPostalCode(parsed.data.postalCode);
+    if (!formattedPostal) {
+      return NextResponse.json(
+        { error: "Enter a valid Canadian postal code (for example A1A 1A1)." },
+        { status: 400 }
+      );
+    }
+
     const parcel = calculateParcelFromCart(fixedItems, productMap);
     const origin = getOriginPostalCode(settings.commerce?.originPostalCode);
     const pickupEnabled = settings.commerce?.pickupEnabled ?? false;
 
-    const rates = await getShippingRates(
+    const { rates, rateSource } = await getShippingRates(
       origin,
-      parsed.data.postalCode,
+      formattedPostal,
       parcel,
       { pickupEnabled, currency: cart.currency }
     );
@@ -58,7 +67,7 @@ export async function POST(request: NextRequest) {
       shippingCost,
       settings,
       parsed.data.province,
-      parsed.data.postalCode
+      formattedPostal
     );
 
     const total = Math.round((cart.fixedSubtotal + shippingCost + tax) * 100) / 100;
@@ -77,9 +86,13 @@ export async function POST(request: NextRequest) {
         dimensions: `${parcel.lengthCm}×${parcel.widthCm}×${parcel.heightCm} cm`,
       },
       usingCanadaPostApi: isCanadaPostApiEnabled(),
+      rateSource,
+      postalCode: formattedPostal,
     });
   } catch (error) {
     console.error("Shipping rates error:", error);
-    return NextResponse.json({ error: "Failed to calculate shipping rates" }, { status: 500 });
+    const message =
+      error instanceof Error ? error.message : "Failed to calculate shipping rates";
+    return NextResponse.json({ error: message }, { status: 502 });
   }
 }

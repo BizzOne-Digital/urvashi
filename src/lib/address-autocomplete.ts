@@ -1,3 +1,6 @@
+import { normalizeProvinceCode } from "@/lib/canadian-tax";
+import { formatCanadianPostalCode } from "@/lib/canadian-postal";
+
 export interface AddressSelection {
   address1: string;
   city?: string;
@@ -10,6 +13,10 @@ export interface AddressSuggestion {
   id: string;
   label: string;
   address: AddressSelection;
+  /** Canada Post AddressComplete — call /api/address-resolve on select for official postal code. */
+  canadaPostId?: string;
+  canadaPostNext?: string;
+  source?: "canada_post" | "openstreetmap";
 }
 
 interface GoogleAddressComponent {
@@ -67,20 +74,34 @@ export interface NominatimResult {
   address?: NominatimAddress;
 }
 
+function normalizeAddressFields(address: AddressSelection): AddressSelection {
+  const postalCode = formatCanadianPostalCode(address.postalCode) || address.postalCode;
+  const province = normalizeProvinceCode(address.province) || address.province;
+
+  return {
+    ...address,
+    postalCode,
+    province,
+    country: address.country || "Canada",
+  };
+}
+
 export function parseNominatimResult(item: NominatimResult): AddressSuggestion {
   const a = item.address || {};
   const street = [a.house_number, a.road || a.street].filter(Boolean).join(" ");
 
+  const address = normalizeAddressFields({
+    address1: street || item.display_name.split(",")[0]?.trim() || item.display_name,
+    city: a.city || a.town || a.village || a.municipality,
+    province: a.state || a.province,
+    postalCode: a.postcode,
+    country: a.country || "Canada",
+  });
+
   return {
     id: String(item.place_id),
     label: item.display_name,
-    address: {
-      address1: street || item.display_name.split(",")[0]?.trim() || item.display_name,
-      city: a.city || a.town || a.village || a.municipality,
-      province: a.state || a.province,
-      postalCode: a.postcode,
-      country: a.country || "Canada",
-    },
+    address,
   };
 }
 
@@ -105,15 +126,17 @@ export function parsePhotonFeature(feature: PhotonFeature): AddressSuggestion {
     .filter(Boolean)
     .join(", ");
 
+  const address = normalizeAddressFields({
+    address1: address1 || p.name || label,
+    city: p.city,
+    province: p.state,
+    postalCode: p.postcode,
+    country: p.country || "Canada",
+  });
+
   return {
     id: `photon-${p.osm_id}`,
     label,
-    address: {
-      address1: address1 || p.name || label,
-      city: p.city,
-      province: p.state,
-      postalCode: p.postcode,
-      country: p.country || "Canada",
-    },
+    address,
   };
 }

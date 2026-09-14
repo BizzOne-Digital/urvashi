@@ -8,7 +8,8 @@ import { Button, buttonVariants } from "@/components/ui/Button";
 import { Container } from "@/components/ui/Container";
 import { AddressAutocomplete } from "@/components/checkout/AddressAutocomplete";
 import { MonerisCheckout } from "@/components/payments/MonerisCheckout";
-import { CANADIAN_PROVINCES, normalizeProvinceCode } from "@/lib/canadian-tax";
+import { CANADIAN_PROVINCES, normalizeProvinceCode, provinceFromPostalCode } from "@/lib/canadian-tax";
+import { formatCanadianPostalCode } from "@/lib/canadian-postal";
 import {
   ArtworkMultiUpload,
   getArtworkImagePreviewUrls,
@@ -74,6 +75,7 @@ interface CustomizeRateSummary {
   taxLabel?: string;
   total: number;
   currency: string;
+  rateSource?: "canada_post" | "estimate";
 }
 
 export function ProductCustomizeForm({ product, monerisMode = "qa" }: ProductCustomizeFormProps) {
@@ -125,8 +127,8 @@ export function ProductCustomizeForm({ product, monerisMode = "qa" }: ProductCus
 
   const fetchRates = useCallback(
     async (postal: string, prov: string, method?: string) => {
-      const normalized = postal.replace(/\s/g, "");
-      if (normalized.length < 6) {
+      const formattedPostal = formatCanadianPostalCode(postal);
+      if (!formattedPostal) {
         setRateSummary(null);
         return;
       }
@@ -140,7 +142,7 @@ export function ProductCustomizeForm({ product, monerisMode = "qa" }: ProductCus
             productSlug: product.slug,
             quantity: form.quantity,
             preferDesign: designHelp,
-            postalCode: postal,
+            postalCode: formattedPostal,
             province: prov || undefined,
             shippingMethod: method || undefined,
           }),
@@ -494,13 +496,20 @@ export function ProductCustomizeForm({ product, monerisMode = "qa" }: ProductCus
               cityHint={form.city}
               onChange={(value) => setForm((prev) => ({ ...prev, address1: value }))}
               onAddressSelect={(addr) => {
-                setForm((prev) => ({
-                  ...prev,
-                  address1: addr.address1,
-                  city: addr.city || prev.city,
-                  province: addr.province ? normalizeProvinceCode(addr.province) || addr.province : prev.province,
-                  postalCode: addr.postalCode || prev.postalCode,
-                }));
+                setForm((prev) => {
+                  const postal = formatCanadianPostalCode(addr.postalCode || "") || addr.postalCode || prev.postalCode;
+                  const provinceFromPostal = postal ? provinceFromPostalCode(postal) : null;
+                  const provinceCode = addr.province
+                    ? normalizeProvinceCode(addr.province) || prev.province
+                    : provinceFromPostal || prev.province;
+                  return {
+                    ...prev,
+                    address1: addr.address1,
+                    city: addr.city || prev.city,
+                    province: provinceCode,
+                    postalCode: postal,
+                  };
+                });
               }}
               className={fieldClass}
               placeholder="e.g. 28 Sinclair St"
@@ -522,11 +531,26 @@ export function ProductCustomizeForm({ product, monerisMode = "qa" }: ProductCus
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium text-pure-paper">Postal code</label>
-              <input required className={fieldClass} value={form.postalCode} onChange={(e) => setForm({ ...form, postalCode: e.target.value })} />
+              <input
+                required
+                className={fieldClass}
+                placeholder="A1A 1A1"
+                value={form.postalCode}
+                onChange={(e) => setForm({ ...form, postalCode: e.target.value })}
+                onBlur={(e) => {
+                  const formatted = formatCanadianPostalCode(e.target.value);
+                  if (formatted) setForm((prev) => ({ ...prev, postalCode: formatted }));
+                }}
+              />
             </div>
           </div>
 
           <h2 className="font-display text-lg font-semibold text-pure-paper">Delivery method</h2>
+          {rateSummary?.rateSource === "estimate" && (
+            <p className="rounded-sm border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+              Showing estimated shipping — live Canada Post rates are not connected yet.
+            </p>
+          )}
           {ratesLoading && <p className="text-sm text-chrome-mid">Calculating Canada Post rates…</p>}
           <div className="space-y-3">
             {(rateSummary?.rates || []).map((rate) => (

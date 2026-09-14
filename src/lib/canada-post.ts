@@ -142,11 +142,23 @@ async function fetchCanadaPostRates(
 
   const text = await res.text();
   if (!res.ok) {
+    const descMatch = text.match(/<description>([^<]+)<\/description>/i);
+    const detail = descMatch?.[1]?.trim();
     console.error("Canada Post rating error:", res.status, text.slice(0, 500));
-    throw new Error("Canada Post rate lookup failed");
+    throw new Error(
+      detail
+        ? `Canada Post rate lookup failed: ${detail}`
+        : `Canada Post rate lookup failed (${res.status})`
+    );
   }
 
-  return parsePriceQuotes(text, serviceCodes);
+  const prices = parsePriceQuotes(text, serviceCodes);
+  if (prices.size === 0) {
+    console.error("Canada Post rating empty quotes:", text.slice(0, 500));
+    throw new Error("Canada Post returned no rates for this postal code");
+  }
+
+  return prices;
 }
 
 /** Estimate rates when Canada Post API credentials are not configured. */
@@ -161,16 +173,24 @@ function estimateRates(parcel: ParcelSpec): Map<string, number> {
   ]);
 }
 
+export type ShippingRateSource = "canada_post" | "estimate";
+
+export interface ShippingRatesResult {
+  rates: ShippingRateQuote[];
+  rateSource: ShippingRateSource;
+}
+
 export async function getShippingRates(
   originPostal: string,
   destinationPostal: string,
   parcel: ParcelSpec,
   options: { pickupEnabled?: boolean; currency?: string }
-): Promise<ShippingRateQuote[]> {
+): Promise<ShippingRatesResult> {
   const currency = options.currency || "CAD";
   const dest = normalizePostal(destinationPostal);
   if (!dest || dest.length < 6) {
-    return options.pickupEnabled ? [buildPickupQuote(currency)] : [];
+    const rates = options.pickupEnabled ? [buildPickupQuote(currency)] : [];
+    return { rates, rateSource: "estimate" };
   }
 
   const serviceCodes = [
@@ -179,19 +199,14 @@ export async function getShippingRates(
   ];
 
   let priceMap: Map<string, number>;
-  try {
-    if (isCanadaPostConfigured()) {
-      priceMap = await fetchCanadaPostRates(
-        originPostal,
-        dest,
-        parcel,
-        serviceCodes
-      );
-    } else {
-      priceMap = estimateRates(parcel);
-    }
-  } catch {
+  let rateSource: ShippingRateSource;
+
+  if (isCanadaPostConfigured()) {
+    priceMap = await fetchCanadaPostRates(originPostal, dest, parcel, serviceCodes);
+    rateSource = "canada_post";
+  } else {
     priceMap = estimateRates(parcel);
+    rateSource = "estimate";
   }
 
   const quotes: ShippingRateQuote[] = [];
@@ -228,39 +243,7 @@ export async function getShippingRates(
     quotes.push(buildPickupQuote(currency));
   }
 
-  if (quotes.length === 0) {
-    const fallback = estimateRates(parcel);
-    const standardPrice = fallback.get(SHIPPING_METHODS.canada_post_standard.serviceCode);
-    const expressPrice = fallback.get(SHIPPING_METHODS.canada_post_express.serviceCode);
-
-    if (standardPrice != null) {
-      quotes.push({
-        id: "canada_post_standard",
-        serviceCode: SHIPPING_METHODS.canada_post_standard.serviceCode,
-        label: SHIPPING_METHODS.canada_post_standard.label,
-        description: SHIPPING_METHODS.canada_post_standard.description,
-        price: standardPrice,
-        currency,
-        estimatedDays: "3–7 business days",
-        tracked: true,
-      });
-    }
-
-    if (expressPrice != null) {
-      quotes.push({
-        id: "canada_post_express",
-        serviceCode: SHIPPING_METHODS.canada_post_express.serviceCode,
-        label: SHIPPING_METHODS.canada_post_express.label,
-        description: SHIPPING_METHODS.canada_post_express.description,
-        price: expressPrice,
-        currency,
-        estimatedDays: "1–3 business days",
-        tracked: true,
-      });
-    }
-  }
-
-  return quotes;
+  return { rates: quotes, rateSource };
 }
 
 function buildPickupQuote(currency: string): ShippingRateQuote {

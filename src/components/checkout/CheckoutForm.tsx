@@ -12,7 +12,8 @@ import { AddressAutocomplete } from "@/components/checkout/AddressAutocomplete";
 import { MonerisCheckout } from "@/components/payments/MonerisCheckout";
 import { formatCurrency } from "@/lib/utils";
 import type { CalculatedLineItem } from "@/lib/pricing";
-import { CANADIAN_PROVINCES, normalizeProvinceCode } from "@/lib/canadian-tax";
+import { CANADIAN_PROVINCES, normalizeProvinceCode, provinceFromPostalCode } from "@/lib/canadian-tax";
+import { formatCanadianPostalCode, isValidCanadianPostalCode } from "@/lib/canadian-postal";
 
 type MonerisEnvironment = "qa" | "prod";
 
@@ -35,6 +36,8 @@ interface RateSummary {
   taxLabel?: string;
   total: number;
   currency: string;
+  rateSource?: "canada_post" | "estimate";
+  postalCode?: string;
 }
 
 const checkoutSchema = z.object({
@@ -45,7 +48,10 @@ const checkoutSchema = z.object({
   address1: z.string().min(1, "Address is required"),
   city: z.string().min(1, "City is required"),
   province: z.string().min(1, "Province is required"),
-  postalCode: z.string().min(6, "Postal code is required"),
+  postalCode: z
+    .string()
+    .min(6, "Postal code is required")
+    .refine((value) => isValidCanadianPostalCode(value), "Enter a valid Canadian postal code"),
   country: z.string().optional(),
   shippingMethod: z.string().min(1, "Select a shipping method"),
   customerNotes: z.string().optional(),
@@ -109,9 +115,12 @@ export function CheckoutForm({
 
   const fetchRates = useCallback(
     async (postal: string, prov: string, method?: string) => {
-      const normalized = postal.replace(/\s/g, "");
-      if (normalized.length < 6) {
+      const formattedPostal = formatCanadianPostalCode(postal);
+      if (!formattedPostal) {
         setRateSummary(null);
+        if (postal.replace(/\s/g, "").length >= 6) {
+          setRatesError("Enter a valid Canadian postal code (for example A1A 1A1).");
+        }
         return;
       }
 
@@ -122,7 +131,7 @@ export function CheckoutForm({
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            postalCode: postal,
+            postalCode: formattedPostal,
             province: prov || undefined,
             shippingMethod: method || undefined,
           }),
@@ -303,11 +312,18 @@ export function CheckoutForm({
             onAddressSelect={(addr) => {
               setValue("address1", addr.address1, { shouldValidate: true });
               if (addr.city) setValue("city", addr.city, { shouldValidate: true });
+              const postal = formatCanadianPostalCode(addr.postalCode || "");
+              if (postal) {
+                setValue("postalCode", postal, { shouldValidate: true });
+                const inferred = provinceFromPostalCode(postal);
+                if (inferred) setValue("province", inferred, { shouldValidate: true });
+              } else if (addr.postalCode) {
+                setValue("postalCode", addr.postalCode, { shouldValidate: true });
+              }
               if (addr.province) {
                 const code = normalizeProvinceCode(addr.province);
-                setValue("province", code || addr.province, { shouldValidate: true });
+                if (code) setValue("province", code, { shouldValidate: true });
               }
-              if (addr.postalCode) setValue("postalCode", addr.postalCode, { shouldValidate: true });
               if (addr.country) setValue("country", addr.country);
             }}
             className={fieldClass}
@@ -339,7 +355,17 @@ export function CheckoutForm({
           </div>
           <div>
             <label htmlFor="postalCode" className="mb-1 block text-sm font-medium">Postal code</label>
-            <input id="postalCode" placeholder="Postal code" {...register("postalCode")} className={fieldClass} />
+            <input
+              id="postalCode"
+              placeholder="A1A 1A1"
+              {...register("postalCode", {
+                onBlur: (event) => {
+                  const formatted = formatCanadianPostalCode(event.target.value);
+                  if (formatted) setValue("postalCode", formatted, { shouldValidate: true });
+                },
+              })}
+              className={fieldClass}
+            />
             {errors.postalCode && (
               <p className="mt-1 text-xs text-deep-magenta">{errors.postalCode.message}</p>
             )}
@@ -347,6 +373,11 @@ export function CheckoutForm({
         </div>
 
         <h2 className="font-display text-xl font-semibold pt-4">Delivery method</h2>
+        {rateSummary?.rateSource === "estimate" && (
+          <p className="rounded-sm border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-900">
+            Showing estimated shipping — live Canada Post rates are not connected. Prices may not change by address until API credentials are fixed.
+          </p>
+        )}
         {ratesLoading && (
           <p className="text-sm text-chrome-mid">Calculating Canada Post rates…</p>
         )}

@@ -83,7 +83,7 @@ export async function calculateOrderTotals(input: OrderTotalsInput): Promise<Ord
   } else if (methodId && shipping?.postalCode) {
     const parcel = calculateParcelFromCart(items, productMap);
     const origin = getOriginPostalCode(settings.commerce?.originPostalCode);
-    const quotes = await getShippingRates(origin, shipping.postalCode, parcel, {
+    const { rates: quotes } = await getShippingRates(origin, shipping.postalCode, parcel, {
       pickupEnabled,
       currency,
     });

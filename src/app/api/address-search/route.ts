@@ -6,6 +6,10 @@ import {
   type NominatimResult,
   type PhotonFeature,
 } from "@/lib/address-autocomplete";
+import {
+  findCanadaPostAddresses,
+  isCanadaPostAddressCompleteEnabled,
+} from "@/lib/canada-post-address-complete";
 
 export const runtime = "nodejs";
 
@@ -31,7 +35,70 @@ async function searchPhoton(query: string): Promise<AddressSuggestion[]> {
     (feature) => feature.properties.countrycode?.toUpperCase() === "CA"
   );
 
-  return canadian.map(parsePhotonFeature).filter((item) => item.label.length > 0);
+  return canadian
+    .map(parsePhotonFeature)
+    .filter((item) => item.label.length > 0)
+    .map((item) => ({ ...item, source: "openstreetmap" as const }));
+}
+
+function parseStreetCity(query: string, cityHint?: string) {
+  const parts = query.split(",").map((p) => p.trim()).filter(Boolean);
+  if (parts.length >= 2) {
+    return { street: parts[0], city: parts[1], province: parts[2] };
+  }
+  if (cityHint) {
+    return { street: query.trim(), city: cityHint };
+  }
+  return { street: query.trim() };
+}
+
+async function searchNominatimStructured(
+  street: string,
+  city?: string,
+  province?: string
+): Promise<AddressSuggestion[]> {
+  const url = new URL("https://nominatim.openstreetmap.org/search");
+  url.searchParams.set("format", "json");
+  url.searchParams.set("addressdetails", "1");
+  url.searchParams.set("countrycodes", "ca");
+  url.searchParams.set("limit", "5");
+  url.searchParams.set("street", street);
+  if (city) url.searchParams.set("city", city);
+  if (province) url.searchParams.set("state", province);
+
+  const res = await fetch(url.toString(), {
+    headers: {
+      "User-Agent": "DPM-Custom-Prints/1.0 (checkout address search)",
+      Accept: "application/json",
+    },
+    cache: "no-store",
+    signal: AbortSignal.timeout(10000),
+  });
+
+  if (!res.ok) return [];
+
+  const data = (await res.json()) as NominatimResult[];
+  return data.map(parseNominatimResult).map((item) => ({ ...item, source: "openstreetmap" as const }));
+}
+
+async function searchCanadaPost(query: string, cityHint?: string): Promise<AddressSuggestion[]> {
+  const searchTerm =
+    cityHint && !query.toLowerCase().includes(cityHint.toLowerCase())
+      ? `${query}, ${cityHint}`
+      : query;
+
+  const items = await findCanadaPostAddresses(searchTerm);
+  return items.map((item) => ({
+    id: `cp-${item.id}`,
+    label: [item.label, item.description].filter(Boolean).join(" — "),
+    address: {
+      address1: item.label,
+      country: "Canada",
+    },
+    canadaPostId: item.id,
+    canadaPostNext: item.next,
+    source: "canada_post" as const,
+  }));
 }
 
 async function searchNominatim(query: string): Promise<AddressSuggestion[]> {
@@ -54,7 +121,9 @@ async function searchNominatim(query: string): Promise<AddressSuggestion[]> {
   if (!res.ok) return [];
 
   const data = (await res.json()) as NominatimResult[];
-  return data.map(parseNominatimResult);
+  return data
+    .map(parseNominatimResult)
+    .map((item) => ({ ...item, source: "openstreetmap" as const }));
 }
 
 function mergeSuggestions(...groups: AddressSuggestion[][]): AddressSuggestion[] {
@@ -86,12 +155,25 @@ export async function GET(request: NextRequest) {
     : `${q}, Canada`;
 
   try {
-    const [photonResults, nominatimResults] = await Promise.all([
+    if (isCanadaPostAddressCompleteEnabled()) {
+      const canadaPostResults = await searchCanadaPost(q, city);
+      if (canadaPostResults.length > 0) {
+        return NextResponse.json(canadaPostResults.slice(0, 8));
+      }
+    }
+
+    const { street, city: parsedCity, province } = parseStreetCity(q, city);
+    const structuredCity = parsedCity || city;
+
+    const [photonResults, nominatimResults, structuredResults] = await Promise.all([
       searchPhoton(searchQuery),
       searchNominatim(searchQuery),
+      street && structuredCity
+        ? searchNominatimStructured(street, structuredCity, province)
+        : Promise.resolve([]),
     ]);
 
-    const merged = mergeSuggestions(photonResults, nominatimResults);
+    const merged = mergeSuggestions(structuredResults, photonResults, nominatimResults);
     return NextResponse.json(merged.slice(0, 8));
   } catch (error) {
     console.error("Address search error:", error);

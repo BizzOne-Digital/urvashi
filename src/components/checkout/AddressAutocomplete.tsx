@@ -52,6 +52,36 @@ export function AddressAutocomplete({
     [onChange, onAddressSelect]
   );
 
+  const selectSuggestion = useCallback(
+    async (item: AddressSuggestion, query: string) => {
+      if (item.canadaPostId) {
+        setLoading(true);
+        try {
+          const params = new URLSearchParams({
+            id: item.canadaPostId,
+            q: query.trim(),
+          });
+          if (item.canadaPostNext) params.set("next", item.canadaPostNext);
+
+          const res = await fetch(`/api/address-resolve?${params.toString()}`);
+          const data = (await res.json()) as AddressSelection & { error?: string };
+          if (!res.ok) throw new Error(data.error || "Could not verify address");
+
+          applySelection(data);
+          return;
+        } catch {
+          applySelection(item.address);
+          return;
+        } finally {
+          setLoading(false);
+        }
+      }
+
+      applySelection(item.address);
+    },
+    [applySelection]
+  );
+
   const fetchSuggestions = useCallback(
     async (query: string) => {
       const trimmed = query.trim();
@@ -136,7 +166,7 @@ export function AddressAutocomplete({
       setActiveIndex((i) => (i <= 0 ? suggestions.length - 1 : i - 1));
     } else if (e.key === "Enter" && activeIndex >= 0) {
       e.preventDefault();
-      applySelection(suggestions[activeIndex].address);
+      void selectSuggestion(suggestions[activeIndex], value);
     } else if (e.key === "Escape") {
       setOpen(false);
     }
@@ -171,7 +201,7 @@ export function AddressAutocomplete({
                   )}
                   onMouseDown={(e) => {
                     e.preventDefault();
-                    applySelection(item.address);
+                    void selectSuggestion(item, value);
                   }}
                 >
                   {item.label}
@@ -225,7 +255,7 @@ export function AddressAutocomplete({
       {dropdown}
 
       <p className="mt-1 text-xs text-chrome-mid">
-        Start typing your street address — select a suggestion to auto-fill city, province, and postal code.
+        Start typing your street address — pick a suggestion, then verify the postal code (you can edit it if needed).
       </p>
     </div>
   );
