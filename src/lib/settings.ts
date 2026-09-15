@@ -30,7 +30,7 @@ const defaultSettings: Partial<ISiteSettings> = {
     shippingModes: ["canada_post_standard", "canada_post_express"],
     pickupEnabled: false,
     defaultStockBehavior: "track",
-    originPostalCode: "K1A0B1",
+    originPostalCode: "K8P3S6",
     orderConfirmationCopy:
       "Your order total includes shipping and applicable taxes. We will contact you with payment instructions shortly.",
   },

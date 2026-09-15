@@ -172,7 +172,7 @@ export function SettingsForm({ initialData }: { initialData: SettingsData }) {
               <input type="number" step="0.01" className={inputClass} value={(commerce.taxRate as number) || ""} onChange={(e) => updateField("commerce", "taxRate", Number(e.target.value))} />
             </FormField>
             <FormField label="Origin postal code (shipping from)">
-              <input className={inputClass} value={(commerce.originPostalCode as string) || ""} onChange={(e) => updateField("commerce", "originPostalCode", e.target.value)} placeholder="K1A0B1" />
+              <input className={inputClass} value={(commerce.originPostalCode as string) || ""} onChange={(e) => updateField("commerce", "originPostalCode", e.target.value)} placeholder="K8P 3S6" />
             </FormField>
             <label className="flex items-center gap-2 text-sm">
               <input type="checkbox" checked={!!commerce.pickupEnabled} onChange={(e) => updateField("commerce", "pickupEnabled", e.target.checked)} />
