@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" fill="none">
+  <rect width="800" height="800" fill="#FEFEFE"/>
+  <text x="400" y="60" text-anchor="middle" font-family="system-ui,sans-serif" font-size="24" fill="#909092">DEMO ASSET</text>
+  <rect x="250" y="200" width="300" height="400" rx="4" fill="#FEFEFE" stroke="#202124" stroke-width="2"/>
+  <line x1="250" y1="280" x2="550" y2="280" stroke="#D0D0D1" stroke-width="1"/>
+  <line x1="250" y1="360" x2="550" y2="360" stroke="#D0D0D1" stroke-width="1"/>
+  <line x1="250" y1="440" x2="550" y2="440" stroke="#D0D0D1" stroke-width="1"/>
+  <line x1="250" y1="520" x2="550" y2="520" stroke="#D0D0D1" stroke-width="1"/>
+  <text x="400" y="660" text-anchor="middle" font-family="system-ui,sans-serif" font-size="18" fill="#065EE5">Calendar</text>
+</svg>

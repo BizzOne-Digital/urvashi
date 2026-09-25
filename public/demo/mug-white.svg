@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" fill="none">
+  <rect width="800" height="800" fill="#FEFEFE"/>
+  <text x="400" y="380" text-anchor="middle" font-family="system-ui,sans-serif" font-size="24" fill="#909092">DEMO ASSET</text>
+  <text x="400" y="420" text-anchor="middle" font-family="system-ui,sans-serif" font-size="18" fill="#065EE5">Custom White Mug  11 oz</text>
+  <ellipse cx="400" cy="520" rx="180" ry="60" fill="#D0D0D1" opacity="0.5"/>
+  <path d="M280 300 Q280 200 400 200 Q520 200 520 300 L520 480 Q520 560 400 560 Q280 560 280 480 Z" fill="#FEFEFE" stroke="#202124" stroke-width="4"/>
+  <path d="M520 340 L580 320 L580 440 L520 420 Z" fill="#FEFEFE" stroke="#202124" stroke-width="4"/>
+  <rect x="340" y="380" width="120" height="80" rx="4" fill="#065EE5" opacity="0.15" stroke="#065EE5" stroke-width="2" stroke-dasharray="6 4"/>
+  <text x="400" y="430" text-anchor="middle" font-family="system-ui,sans-serif" font-size="14" fill="#065EE5">Your Design</text>
+</svg>

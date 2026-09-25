@@ -1,0 +1,521 @@
+"use client";
+
+import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { toast } from "sonner";
+import Link from "next/link";
+import { Button } from "@/components/ui/Button";
+import { AddressAutocomplete } from "@/components/checkout/AddressAutocomplete";
+import { MonerisCheckout } from "@/components/payments/MonerisCheckout";
+import { formatCurrency } from "@/lib/utils";
+import type { CalculatedLineItem } from "@/lib/pricing";
+import { CANADIAN_PROVINCES, normalizeProvinceCode, provinceFromPostalCode } from "@/lib/canadian-tax";
+import { formatCanadianPostalCode, isValidCanadianPostalCode } from "@/lib/canadian-postal";
+
+type MonerisEnvironment = "qa" | "prod";
+
+interface ShippingRate {
+  id: string;
+  label: string;
+  description: string;
+  price: number;
+  currency: string;
+  estimatedDays?: string;
+  tracked: boolean;
+}
+
+interface RateSummary {
+  rates: ShippingRate[];
+  selectedMethod?: string;
+  subtotal: number;
+  shippingCost: number;
+  tax: number;
+  taxLabel?: string;
+  total: number;
+  currency: string;
+  rateSource?: "canada_post" | "estimate";
+  postalCode?: string;
+}
+
+const checkoutSchema = z.object({
+  email: z.string().email(),
+  firstName: z.string().min(1),
+  lastName: z.string().min(1),
+  phone: z.string().optional(),
+  address1: z.string().min(1, "Address is required"),
+  city: z.string().min(1, "City is required"),
+  province: z.string().min(1, "Province is required"),
+  postalCode: z
+    .string()
+    .min(6, "Postal code is required")
+    .refine((value) => isValidCanadianPostalCode(value), "Enter a valid Canadian postal code"),
+  country: z.string().optional(),
+  shippingMethod: z.string().min(1, "Select a shipping method"),
+  customerNotes: z.string().optional(),
+});
+
+type CheckoutFormData = z.infer<typeof checkoutSchema>;
+
+interface CheckoutFormProps {
+  pickupEnabled?: boolean;
+  monerisEnabled?: boolean;
+  monerisMode?: MonerisEnvironment;
+}
+
+interface PendingMonerisPayment {
+  ticket: string;
+  orderNumber: string;
+  accessToken: string;
+  mode: MonerisEnvironment;
+}
+
+export function CheckoutForm({
+  pickupEnabled = false,
+  monerisEnabled = false,
+  monerisMode = "qa",
+}: CheckoutFormProps) {
+  const router = useRouter();
+  const [cart, setCart] = useState<{
+    items: CalculatedLineItem[];
+    fixedSubtotal: number;
+    currency: string;
+  } | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [ratesLoading, setRatesLoading] = useState(false);
+  const [ratesError, setRatesError] = useState<string | null>(null);
+  const [rateSummary, setRateSummary] = useState<RateSummary | null>(null);
+  const [pendingPayment, setPendingPayment] = useState<PendingMonerisPayment | null>(null);
+
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    watch,
+    formState: { errors },
+  } = useForm<CheckoutFormData>({
+    resolver: zodResolver(checkoutSchema),
+    defaultValues: { country: "Canada" },
+  });
+
+  const address1 = watch("address1") || "";
+  const city = watch("city") || "";
+  const postalCode = watch("postalCode") || "";
+  const province = watch("province") || "";
+  const shippingMethod = watch("shippingMethod") || "";
+
+  useEffect(() => {
+    fetch("/api/cart")
+      .then((r) => r.json())
+      .then((d) => setCart(d.cart))
+      .catch(() => setCart(null));
+  }, []);
+
+  const fetchRates = useCallback(
+    async (postal: string, prov: string, method?: string) => {
+      const formattedPostal = formatCanadianPostalCode(postal);
+      if (!formattedPostal) {
+        setRateSummary(null);
+        if (postal.replace(/\s/g, "").length >= 6) {
+          setRatesError("Enter a valid Canadian postal code (for example A1A 1A1).");
+        }
+        return;
+      }
+
+      setRatesLoading(true);
+      setRatesError(null);
+      try {
+        const res = await fetch("/api/shipping/rates", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            postalCode: formattedPostal,
+            province: prov || undefined,
+            shippingMethod: method || undefined,
+          }),
+        });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error || "Could not load shipping rates");
+        if (!json.rates?.length) {
+          throw new Error("No shipping options available for this postal code");
+        }
+
+        setRateSummary(json);
+        if (json.selectedMethod) {
+          setValue("shippingMethod", json.selectedMethod, { shouldValidate: true });
+        }
+      } catch (err) {
+        setRateSummary(null);
+        const message = err instanceof Error ? err.message : "Shipping rates unavailable";
+        setRatesError(message);
+        toast.error(message);
+      } finally {
+        setRatesLoading(false);
+      }
+    },
+    [setValue]
+  );
+
+  useEffect(() => {
+    const normalized = postalCode.replace(/\s/g, "");
+    if (normalized.length < 6) {
+      setRateSummary(null);
+      setRatesError(null);
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      fetchRates(postalCode, province, shippingMethod || undefined);
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [postalCode, province, fetchRates, shippingMethod]);
+
+  const onSubmit = async (data: CheckoutFormData) => {
+    setSubmitting(true);
+    try {
+      const res = await fetch("/api/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          customer: {
+            email: data.email,
+            firstName: data.firstName,
+            lastName: data.lastName,
+            phone: data.phone,
+          },
+          shipping: {
+            address1: data.address1,
+            city: data.city,
+            province: data.province,
+            postalCode: data.postalCode,
+            country: data.country,
+            method: data.shippingMethod,
+          },
+          customerNotes: data.customerNotes,
+          paymentMethod: monerisEnabled ? "moneris" : "manual_invoice",
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Checkout failed");
+
+      if (json.monerisTicket) {
+        setPendingPayment({
+          ticket: json.monerisTicket,
+          orderNumber: json.orderNumber,
+          accessToken: json.accessToken,
+          mode: json.monerisMode === "prod" ? "prod" : monerisMode,
+        });
+        return;
+      }
+
+      router.push(`/order/success?orderNumber=${json.orderNumber}&token=${json.accessToken}`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Checkout failed");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleMonerisComplete = async (ticket: string) => {
+    if (!pendingPayment) return;
+
+    try {
+      const res = await fetch("/api/moneris/confirm-order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ticket,
+          orderNumber: pendingPayment.orderNumber,
+          accessToken: pendingPayment.accessToken,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Payment confirmation failed");
+
+      setPendingPayment(null);
+      router.push(
+        `/order/success?orderNumber=${pendingPayment.orderNumber}&token=${pendingPayment.accessToken}`
+      );
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Payment confirmation failed");
+    }
+  };
+
+  const fieldClass =
+    "w-full rounded-sm border border-chrome-light bg-pure-paper px-4 py-3 text-sm";
+
+  if (!cart) return <p className="text-chrome-mid">Loading checkout…</p>;
+
+  if (cart.items.length === 0) {
+    return (
+      <div className="text-center">
+        <p className="text-carbon">Your cart is empty.</p>
+        <Link href="/shop" className="btn-primary mt-4 inline-flex">Shop products</Link>
+      </div>
+    );
+  }
+
+  const displaySummary = rateSummary || {
+    subtotal: cart.fixedSubtotal,
+    shippingCost: 0,
+    tax: 0,
+    total: cart.fixedSubtotal,
+    currency: cart.currency,
+    rates: [],
+  };
+
+  return (
+    <div className="grid min-w-0 gap-10 lg:grid-cols-3">
+      <form onSubmit={handleSubmit(onSubmit)} className="min-w-0 space-y-5 lg:col-span-2">
+        <h2 className="font-display text-xl font-semibold">Customer details</h2>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label htmlFor="firstName" className="mb-1 block text-sm font-medium">First name</label>
+            <input id="firstName" {...register("firstName")} className={fieldClass} />
+            {errors.firstName && (
+              <p className="mt-1 text-xs text-deep-magenta">{errors.firstName.message}</p>
+            )}
+          </div>
+          <div>
+            <label htmlFor="lastName" className="mb-1 block text-sm font-medium">Last name</label>
+            <input id="lastName" {...register("lastName")} className={fieldClass} />
+            {errors.lastName && (
+              <p className="mt-1 text-xs text-deep-magenta">{errors.lastName.message}</p>
+            )}
+          </div>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label htmlFor="email" className="mb-1 block text-sm font-medium">Email</label>
+            <input id="email" type="email" {...register("email")} className={fieldClass} />
+            {errors.email && (
+              <p className="mt-1 text-xs text-deep-magenta">{errors.email.message}</p>
+            )}
+          </div>
+          <div>
+            <label htmlFor="phone" className="mb-1 block text-sm font-medium">Phone</label>
+            <input id="phone" {...register("phone")} className={fieldClass} />
+          </div>
+        </div>
+
+        <h2 className="font-display text-xl font-semibold pt-4">Shipping address</h2>
+        <div>
+          <label htmlFor="address1" className="mb-1 block text-sm font-medium">Address line 1</label>
+          <AddressAutocomplete
+            id="address1"
+            value={address1}
+            cityHint={city}
+            onChange={(v) => setValue("address1", v, { shouldValidate: true })}
+            onAddressSelect={(addr) => {
+              setValue("address1", addr.address1, { shouldValidate: true });
+              if (addr.city) setValue("city", addr.city, { shouldValidate: true });
+              const postal = formatCanadianPostalCode(addr.postalCode || "");
+              if (postal) {
+                setValue("postalCode", postal, { shouldValidate: true });
+                const inferred = provinceFromPostalCode(postal);
+                if (inferred) setValue("province", inferred, { shouldValidate: true });
+              } else if (addr.postalCode) {
+                setValue("postalCode", addr.postalCode, { shouldValidate: true });
+              }
+              if (addr.province) {
+                const code = normalizeProvinceCode(addr.province);
+                if (code) setValue("province", code, { shouldValidate: true });
+              }
+              if (addr.country) setValue("country", addr.country);
+            }}
+            className={fieldClass}
+            placeholder="e.g. 28 Sinclair St"
+          />
+          {errors.address1 && (
+            <p className="mt-1 text-xs text-deep-magenta">{errors.address1.message}</p>
+          )}
+        </div>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div>
+            <label htmlFor="city" className="mb-1 block text-sm font-medium">City</label>
+            <input id="city" placeholder="City" {...register("city")} className={fieldClass} />
+            {errors.city && (
+              <p className="mt-1 text-xs text-deep-magenta">{errors.city.message}</p>
+            )}
+          </div>
+          <div>
+            <label htmlFor="province" className="mb-1 block text-sm font-medium">Province</label>
+            <select id="province" {...register("province")} className={fieldClass}>
+              <option value="">Select province</option>
+              {CANADIAN_PROVINCES.map((p) => (
+                <option key={p.code} value={p.code}>{p.name}</option>
+              ))}
+            </select>
+            {errors.province && (
+              <p className="mt-1 text-xs text-deep-magenta">{errors.province.message}</p>
+            )}
+          </div>
+          <div>
+            <label htmlFor="postalCode" className="mb-1 block text-sm font-medium">Postal code</label>
+            <input
+              id="postalCode"
+              placeholder="A1A 1A1"
+              {...register("postalCode", {
+                onBlur: (event) => {
+                  const formatted = formatCanadianPostalCode(event.target.value);
+                  if (formatted) setValue("postalCode", formatted, { shouldValidate: true });
+                },
+              })}
+              className={fieldClass}
+            />
+            {errors.postalCode && (
+              <p className="mt-1 text-xs text-deep-magenta">{errors.postalCode.message}</p>
+            )}
+          </div>
+        </div>
+
+        <h2 className="font-display text-xl font-semibold pt-4">Delivery method</h2>
+        {rateSummary?.rateSource === "estimate" && (
+          <p className="rounded-sm border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-900">
+            Showing estimated shipping — live Canada Post rates are not connected. Prices may not change by address until API credentials are fixed.
+          </p>
+        )}
+        {ratesLoading && (
+          <p className="text-sm text-chrome-mid">Calculating Canada Post rates…</p>
+        )}
+        {!ratesLoading && displaySummary.rates.length === 0 && postalCode.replace(/\s/g, "").length >= 6 && (
+          <p className="text-sm text-chrome-mid">
+            {ratesError || "Calculating Canada Post shipping for your postal code…"}
+          </p>
+        )}
+        {!ratesLoading && postalCode.replace(/\s/g, "").length < 6 && (
+          <p className="text-sm text-chrome-mid">
+            Enter your postal code to see Canada Post shipping options and provincial tax.
+          </p>
+        )}
+        <div className="space-y-3">
+          {displaySummary.rates.map((rate) => (
+            <label
+              key={rate.id}
+              className={`flex cursor-pointer items-start gap-3 rounded-sm border p-4 transition-colors ${
+                shippingMethod === rate.id
+                  ? "border-royal-blue bg-royal-blue/5"
+                  : "border-chrome-light/60 hover:border-chrome-light"
+              }`}
+            >
+              <input
+                type="radio"
+                name="shippingMethod"
+                value={rate.id}
+                checked={shippingMethod === rate.id}
+                className="mt-1"
+                onChange={() => {
+                  setValue("shippingMethod", rate.id, { shouldValidate: true });
+                  fetchRates(postalCode, province, rate.id);
+                }}
+              />
+              <div className="min-w-0 flex-1">
+                <p className="font-medium text-carbon">
+                  {rate.label}
+                  {rate.tracked && (
+                    <span className="ml-2 text-xs font-normal text-royal-blue">Tracking included</span>
+                  )}
+                </p>
+                <p className="text-sm text-chrome-mid">{rate.description}</p>
+                {rate.estimatedDays && (
+                  <p className="text-xs text-chrome-mid">{rate.estimatedDays}</p>
+                )}
+              </div>
+              <span className="shrink-0 font-semibold">
+                {rate.price === 0
+                  ? "Free"
+                  : formatCurrency(rate.price, rate.currency)}
+              </span>
+            </label>
+          ))}
+        </div>
+        {errors.shippingMethod && (
+          <p className="text-xs text-deep-magenta">{errors.shippingMethod.message}</p>
+        )}
+
+        <div>
+          <label htmlFor="customerNotes" className="mb-1 block text-sm font-medium">Order notes</label>
+          <textarea id="customerNotes" rows={3} {...register("customerNotes")} className={fieldClass} />
+        </div>
+
+        <Button
+          type="submit"
+          disabled={submitting || ratesLoading || !rateSummary}
+          className="w-full sm:w-auto"
+        >
+          {submitting
+            ? "Processing…"
+            : monerisEnabled
+              ? "Pay & place order"
+              : "Place order"}
+        </Button>
+        {!rateSummary && postalCode.replace(/\s/g, "").length >= 6 && !ratesLoading && (
+          <p className="text-xs text-chrome-mid">
+            {ratesError
+              ? ratesError
+              : "Select a delivery method above once shipping rates load."}
+          </p>
+        )}
+      </form>
+
+      <div className="rounded-sm border border-chrome-light/60 bg-chrome-light/5 p-6 h-fit">
+        <h2 className="font-display text-lg font-semibold">Order summary</h2>
+        <ul className="mt-4 space-y-2 text-sm">
+          {cart.items.map((item) => (
+            <li key={item.productId} className="flex justify-between gap-2">
+              <span className="min-w-0 break-words">{item.productName} × {item.quantity}</span>
+              <span>{formatCurrency(item.lineTotal, cart.currency)}</span>
+            </li>
+          ))}
+        </ul>
+        <div className="mt-4 space-y-2 border-t border-chrome-light/60 pt-4 text-sm">
+          <p className="flex justify-between">
+            <span>Subtotal</span>
+            <span>{formatCurrency(displaySummary.subtotal, displaySummary.currency)}</span>
+          </p>
+          <p className="flex justify-between text-chrome-mid">
+            <span>Shipping</span>
+            <span>
+              {rateSummary
+                ? formatCurrency(displaySummary.shippingCost, displaySummary.currency)
+                : "—"}
+            </span>
+          </p>
+          <p className="flex justify-between text-chrome-mid">
+            <span>{rateSummary?.taxLabel || "Tax"}</span>
+            <span>
+              {rateSummary
+                ? formatCurrency(displaySummary.tax, displaySummary.currency)
+                : "—"}
+            </span>
+          </p>
+          <p className="flex justify-between border-t border-chrome-light/60 pt-2 font-semibold">
+            <span>Total</span>
+            <span>{formatCurrency(displaySummary.total, displaySummary.currency)}</span>
+          </p>
+        </div>
+        <p className="mt-3 text-xs text-chrome-mid">
+          {monerisEnabled
+            ? "Pay securely with Moneris. Shipping via Canada Post with tracking."
+            : "Shipping via Canada Post with tracking. Taxes calculated for your province."}
+        </p>
+      </div>
+
+      {pendingPayment && (
+        <MonerisCheckout
+          ticket={pendingPayment.ticket}
+          mode={pendingPayment.mode}
+          onComplete={handleMonerisComplete}
+          onCancel={() => {
+            setPendingPayment(null);
+            toast.message("Payment cancelled. Your order is saved — contact us to complete payment.");
+          }}
+          onError={(message) => toast.error(message)}
+        />
+      )}
+    </div>
+  );
+}
