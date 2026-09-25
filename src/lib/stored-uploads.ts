@@ -15,6 +15,9 @@ export const ADMIN_UPLOAD_MIME_TYPES = new Set([
   "image/png",
   "image/webp",
   "image/gif",
+  "video/mp4",
+  "video/webm",
+  "video/quicktime",
 ]);
 
 export const ARTWORK_MIME_TYPES = new Set([
@@ -25,6 +28,13 @@ export const ARTWORK_MIME_TYPES = new Set([
 ]);
 
 export const ADMIN_MAX_BYTES = 8 * 1024 * 1024;
+export const ADMIN_VIDEO_MAX_BYTES = 25 * 1024 * 1024;
+
+export const ADMIN_VIDEO_MIME_TYPES = new Set([
+  "video/mp4",
+  "video/webm",
+  "video/quicktime",
+]);
 export const ARTWORK_MAX_BYTES = 25 * 1024 * 1024;
 
 const MIME_TO_EXT: Record<string, string> = {
@@ -33,6 +43,9 @@ const MIME_TO_EXT: Record<string, string> = {
   "image/webp": "webp",
   "image/gif": "gif",
   "application/pdf": "pdf",
+  "video/mp4": "mp4",
+  "video/webm": "webm",
+  "video/quicktime": "mov",
 };
 
 export function sanitizeFilename(filename: string): boolean {

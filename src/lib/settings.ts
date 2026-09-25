@@ -1,6 +1,7 @@
 import { connectDB } from "./db";
 import SiteSettings, { ISiteSettings } from "@/models/SiteSettings";
 import { siteDefaults, brandColors } from "./brand";
+import { DEFAULT_HOME_VIRAL } from "./home-viral";
 import { unstable_cache } from "next/cache";
 import { CACHE_TAGS } from "./revalidation";
 
@@ -57,6 +58,14 @@ const defaultSettings: Partial<ISiteSettings> = {
     introEnabled: true,
     introOncePerSession: true,
     defaultIntensity: "medium",
+  },
+  homeViral: {
+    enabled: DEFAULT_HOME_VIRAL.enabled,
+    eyebrow: DEFAULT_HOME_VIRAL.eyebrow,
+    title: DEFAULT_HOME_VIRAL.title,
+    description: DEFAULT_HOME_VIRAL.description,
+    productSlugs: DEFAULT_HOME_VIRAL.productSlugs,
+    items: DEFAULT_HOME_VIRAL.items,
   },
 };
 

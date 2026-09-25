@@ -3,6 +3,8 @@ import { requireAdmin, unauthorizedResponse } from "@/lib/auth-helpers";
 import {
   ADMIN_MAX_BYTES,
   ADMIN_UPLOAD_MIME_TYPES,
+  ADMIN_VIDEO_MAX_BYTES,
+  ADMIN_VIDEO_MIME_TYPES,
   deleteStoredUploadByUrl,
   extensionForMime,
   parseUploadUrl,
@@ -36,14 +38,18 @@ export async function POST(request: NextRequest) {
 
     if (!ADMIN_UPLOAD_MIME_TYPES.has(file.type)) {
       return NextResponse.json(
-        { error: "Invalid file type. Allowed: JPEG, PNG, WebP, GIF" },
+        { error: "Invalid file type. Allowed: JPEG, PNG, WebP, GIF, MP4, WebM" },
         { status: 400 }
       );
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());
-    if (buffer.length > ADMIN_MAX_BYTES) {
-      return NextResponse.json({ error: "File exceeds maximum size of 8MB" }, { status: 400 });
+    const maxBytes = ADMIN_VIDEO_MIME_TYPES.has(file.type) ? ADMIN_VIDEO_MAX_BYTES : ADMIN_MAX_BYTES;
+    if (buffer.length > maxBytes) {
+      return NextResponse.json(
+        { error: `File exceeds maximum size of ${maxBytes / (1024 * 1024)}MB` },
+        { status: 400 }
+      );
     }
 
     if (!extensionForMime(file.type)) {

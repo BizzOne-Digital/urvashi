@@ -48,6 +48,22 @@ async function withDb<T>(fn: () => Promise<T>): Promise<T> {
 export type PlainProduct = ReturnType<typeof toPlain<IProduct>>;
 export type PlainService = ReturnType<typeof toPlain<IService>>;
 
+export async function getProductsBySlugs(slugs: readonly string[]) {
+  return withDb(async () => {
+    const products = await Product.find({
+      status: "published",
+      slug: { $in: [...slugs] },
+    }).lean();
+
+    const bySlug = new Map(products.map((p) => [p.slug, p]));
+    const ordered = slugs
+      .map((slug) => bySlug.get(slug))
+      .filter((p): p is (typeof products)[number] => Boolean(p));
+
+    return toPlain(ordered);
+  });
+}
+
 export async function getFeaturedProducts(limit = 8) {
   return withDb(async () => {
     let products = await Product.find({ status: "published", featured: true })

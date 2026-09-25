@@ -4,6 +4,8 @@ import Link from "next/link";
 import { Container } from "@/components/ui/Container";
 import { buttonVariants } from "@/components/ui/Button";
 import { ProductGrid } from "@/components/shop/ProductGrid";
+import { ViralProductsShowcase } from "@/components/home/ViralProductsShowcase";
+import { resolveViralGallery } from "@/lib/home-viral-gallery";
 import { CinematicIntro } from "@/components/home/CinematicIntro";
 import { HomeHero } from "@/components/home/HomeHero";
 import { ContactForm } from "@/components/forms/ContactForm";
@@ -12,11 +14,13 @@ import { getCachedSettings } from "@/lib/settings";
 import { siteDefaults } from "@/lib/brand";
 import {
   getFeaturedProducts,
+  getProductsBySlugs,
   getPublishedPageBySlug,
   getPublishedServices,
   getPublishedTestimonials,
   getPublishedFaqs,
 } from "@/lib/public-data";
+import { resolveHomeViral } from "@/lib/home-viral";
 import { cmsHeading } from "@/lib/page-content";
 import { PRICING_CATALOG } from "@/lib/product-pricing";
 import { cn, formatCurrency } from "@/lib/utils";
@@ -32,10 +36,22 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function HomePage() {
-  const [settings, featuredProducts, services, testimonials, faqs, cmsPage] =
+  const settings = await getCachedSettings();
+  const homeViral = resolveHomeViral(
+    settings.homeViral
+      ? {
+          ...settings.homeViral,
+          productSlugs: settings.homeViral.productSlugs,
+          items: settings.homeViral.items,
+          lastUpdatedAt: settings.homeViral.lastUpdatedAt?.toISOString?.() ?? undefined,
+        }
+      : null
+  );
+
+  const [featuredProducts, viralProducts, services, testimonials, faqs, cmsPage] =
     await Promise.all([
-      getCachedSettings(),
       getFeaturedProducts(8),
+      homeViral.enabled ? getProductsBySlugs(homeViral.productSlugs) : Promise.resolve([]),
       getPublishedServices(),
       getPublishedTestimonials(true),
       getPublishedFaqs(),
@@ -46,6 +62,15 @@ export default async function HomePage() {
   const logoPath = settings.general?.logoPath || siteDefaults.logoPath;
   const shortName = settings.general?.shortName || siteDefaults.shortName;
   const tagline = settings.general?.tagline || siteDefaults.tagline;
+
+  const viralShowcase = viralProducts.map((product) => {
+    const item = homeViral.items.find((i) => i.slug === product.slug);
+    return {
+      ...product,
+      _id: String(product._id),
+      gallery: resolveViralGallery(product, item?.media),
+    };
+  });
 
   const faqPreview = faqs.slice(0, 4);
   const testimonialPreview = testimonials.slice(0, 3);
@@ -74,6 +99,28 @@ export default async function HomePage() {
       <CinematicIntro logoPath={logoPath} shortName={shortName} enabled={introEnabled} />
 
       <HomeHero tagline={tagline} />
+
+      {homeViral.enabled && viralProducts.length > 0 && (
+        <VibrantSection variant="cosmic" className="border-b border-white/5">
+          <Container className="min-w-0">
+            <div className="flex min-w-0 flex-wrap items-end justify-between gap-4">
+              <div>
+                <p className="text-sm font-semibold uppercase tracking-widest text-magenta">
+                  {homeViral.eyebrow}
+                </p>
+                <h2 className="heading-section mt-2 gradient-heading-light">{homeViral.title}</h2>
+                <p className="mt-2 max-w-xl text-sm text-chrome-light">{homeViral.description}</p>
+              </div>
+              <Link href="/shop" className="text-sm font-semibold text-cyan hover:underline">
+                Shop all
+              </Link>
+            </div>
+            <div className="mt-10">
+              <ViralProductsShowcase products={viralShowcase} />
+            </div>
+          </Container>
+        </VibrantSection>
+      )}
 
       {/* Scroll story */}
       <VibrantSection variant="aurora">

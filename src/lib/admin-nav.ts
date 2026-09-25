@@ -5,6 +5,7 @@ import {
   Briefcase,
   DollarSign,
   ClipboardList,
+  Sparkles,
   type LucideIcon,
 } from "lucide-react";
 
@@ -17,6 +18,7 @@ export interface AdminNavItem {
 /** Admin portal: products, services, pricing, and orders only. */
 export const adminNavItems: AdminNavItem[] = [
   { label: "Dashboard", href: "/admin", icon: LayoutDashboard },
+  { label: "Home viral", href: "/admin/home", icon: Sparkles },
   { label: "Products", href: "/admin/products", icon: Package },
   { label: "Services", href: "/admin/services", icon: Briefcase },
   { label: "Pricing", href: "/admin/pricing", icon: DollarSign },
