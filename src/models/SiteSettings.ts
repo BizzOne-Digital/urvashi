@@ -69,6 +69,18 @@ export interface ISiteSettings extends Document {
     introOncePerSession: boolean;
     defaultIntensity: "low" | "medium" | "high";
   };
+  homeViral?: {
+    enabled: boolean;
+    eyebrow?: string;
+    title?: string;
+    description?: string;
+    productSlugs?: string[];
+    items?: Array<{
+      slug: string;
+      media?: Array<{ type: "image" | "video"; url: string; alt?: string }>;
+    }>;
+    lastUpdatedAt?: Date;
+  };
   createdAt: Date;
   updatedAt: Date;
 }
@@ -146,6 +158,26 @@ const SiteSettingsSchema = new Schema<ISiteSettings>(
       introEnabled: { type: Boolean, default: true },
       introOncePerSession: { type: Boolean, default: true },
       defaultIntensity: { type: String, enum: ["low", "medium", "high"], default: "medium" },
+    },
+    homeViral: {
+      enabled: { type: Boolean, default: true },
+      eyebrow: String,
+      title: String,
+      description: String,
+      productSlugs: [String],
+      items: [
+        {
+          slug: String,
+          media: [
+            {
+              type: { type: String, enum: ["image", "video"], default: "image" },
+              url: String,
+              alt: String,
+            },
+          ],
+        },
+      ],
+      lastUpdatedAt: Date,
     },
   },
   { timestamps: true }
