@@ -39,6 +39,18 @@ const APPAREL_COLORS = [
   { label: "Dark green", value: "dark-green" },
 ] as const;
 
+const T_SHIRT_SIZES = [
+  { label: "Small", value: "s" },
+  { label: "Med", value: "m" },
+  { label: "Large", value: "l" },
+  { label: "XL", value: "xl" },
+] as const;
+
+const HOODIE_SIZES = [
+  { label: "Med", value: "m" },
+  { label: "Large", value: "l" },
+] as const;
+
 const ONE_SIDE_AND_BOTH_PRINT = (bothSidesSurcharge: number): ShopPrintLocation[] => [
   { id: "front", label: "One side print", surcharge: 0 },
   { id: "front_and_back", label: "Front & back print", surcharge: bothSidesSurcharge },
@@ -190,7 +202,10 @@ export const SHOP_PRODUCTS: ShopProductCatalogEntry[] = [
       "Round neck half-sleeve tees in black, white, navy blue, or dark green. One-side print from $19.99; front & back $25.99.",
     longDescription:
       "Round neck half-sleeve custom t-shirts, in stock in black, white, navy blue, and dark green. Choose one-side print ($19.99) or front and back ($25.99). Upload your artwork on the customize page.",
-    variants: [{ name: "Colour", options: [...APPAREL_COLORS] }],
+    variants: [
+      { name: "Colour", options: [...APPAREL_COLORS] },
+      { name: "Size", options: [...T_SHIRT_SIZES] },
+    ],
     printLocations: ONE_SIDE_AND_BOTH_PRINT(6),
   },
   {
@@ -207,7 +222,10 @@ export const SHOP_PRODUCTS: ShopProductCatalogEntry[] = [
       "Round neck full-sleeve tees in black, white, navy blue, or dark green. One-side print from $22.99; front & back $27.99.",
     longDescription:
       "Round neck full-sleeve custom t-shirts, in stock in black, white, navy blue, and dark green. Choose one-side print ($22.99) or front and back ($27.99). Upload your artwork on the customize page.",
-    variants: [{ name: "Colour", options: [...APPAREL_COLORS] }],
+    variants: [
+      { name: "Colour", options: [...APPAREL_COLORS] },
+      { name: "Size", options: [...T_SHIRT_SIZES] },
+    ],
     printLocations: ONE_SIDE_AND_BOTH_PRINT(5),
   },
   {
@@ -234,6 +252,7 @@ export const SHOP_PRODUCTS: ShopProductCatalogEntry[] = [
           { label: "Dark green", value: "dark-green" },
         ],
       },
+      { name: "Size", options: [...HOODIE_SIZES] },
     ],
     printLocations: ONE_SIDE_AND_BOTH_PRINT(4),
   },

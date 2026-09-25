@@ -5,11 +5,12 @@ import Image from "next/image";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/Button";
 import { getProductPriceDisplay } from "@/lib/pricing";
+import { filterInStockOptions } from "@/lib/product-stock";
 import { cn } from "@/lib/utils";
 
 interface Variant {
   name: string;
-  options: Array<{ label: string; value: string; surcharge?: number }>;
+  options: Array<{ label: string; value: string; surcharge?: number; inStock?: boolean }>;
 }
 
 interface PrintLocation {
@@ -88,23 +89,29 @@ export function AddToCartForm({ product, className }: AddToCartFormProps) {
     <div className={cn("space-y-5", className)}>
       <p className="text-2xl font-bold text-royal-blue">{display}</p>
 
-      {product.variants?.map((variant) => (
-        <div key={variant.name}>
-          <label className="mb-1 block text-sm font-medium">{variant.name}</label>
-          <select
-            value={variantSelections[variant.name] || ""}
-            onChange={(e) => setVariantSelections((s) => ({ ...s, [variant.name]: e.target.value }))}
-            className={cn(fieldClass, "w-full")}
-          >
-            <option value="">Select {variant.name}</option>
-            {variant.options.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}{opt.surcharge ? ` (+$${opt.surcharge})` : ""}
+      {product.variants?.map((variant) => {
+        const options = filterInStockOptions(variant.options);
+        return (
+          <div key={variant.name}>
+            <label className="mb-1 block text-sm font-medium">{variant.name}</label>
+            <select
+              value={variantSelections[variant.name] || ""}
+              onChange={(e) => setVariantSelections((s) => ({ ...s, [variant.name]: e.target.value }))}
+              className={cn(fieldClass, "w-full")}
+              disabled={!options.length}
+            >
+              <option value="">
+                {options.length ? `Select ${variant.name}` : `${variant.name} out of stock`}
               </option>
-            ))}
-          </select>
-        </div>
-      ))}
+              {options.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}{opt.surcharge ? ` (+$${opt.surcharge})` : ""}
+                </option>
+              ))}
+            </select>
+          </div>
+        );
+      })}
 
       {product.printLocations && product.printLocations.length > 0 && (
         <div>

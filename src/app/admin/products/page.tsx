@@ -4,6 +4,7 @@ import { DataTable } from "@/components/admin/DataTable";
 import { StatusBadge } from "@/components/admin/StatusBadge";
 import { PageActions } from "@/components/admin/PageActions";
 import { formatCurrency } from "@/lib/utils";
+import { summarizeVariantStock } from "@/lib/product-stock";
 
 export default async function AdminProductsPage() {
   await connectDB();
@@ -17,6 +18,8 @@ export default async function AdminProductsPage() {
     currency: p.currency,
     status: p.status,
     availability: p.availability,
+    stock: p.stock,
+    variantStock: summarizeVariantStock(p.variants),
     updatedAt: p.updatedAt,
   }));
 
@@ -46,6 +49,19 @@ export default async function AdminProductsPage() {
             key: "availability",
             header: "Availability",
             render: (row) => <StatusBadge status={row.availability as string} />,
+          },
+          {
+            key: "stock",
+            header: "Stock",
+            render: (row) => {
+              const qty = row.stock as number | undefined;
+              const variantStock = row.variantStock as string;
+              if (variantStock && variantStock !== "—") {
+                return <span className="text-sm text-carbon">{variantStock}</span>;
+              }
+              if (qty != null) return <span className="text-sm">{qty}</span>;
+              return <span className="text-sm text-chrome-mid">—</span>;
+            },
           },
           {
             key: "updatedAt",

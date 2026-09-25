@@ -30,6 +30,7 @@ export default async function ProductCustomizePage({ params }: Props) {
         mockupFrontImage: product.mockupFrontImage,
         mockupBackImage: product.mockupBackImage,
         variants: product.variants,
+        printLocations: product.printLocations,
         customizer: product.customizer,
       }}
       monerisMode={getPublicMonerisMode()}

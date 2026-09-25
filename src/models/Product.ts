@@ -7,6 +7,8 @@ export interface IProductVariant {
     label: string;
     value: string;
     surcharge?: number;
+    /** When false, option is hidden from shop/customize. Default: in stock. */
+    inStock?: boolean;
   }>;
 }
 
@@ -119,7 +121,7 @@ const ProductSchema = new Schema<IProduct>(
     variants: [
       {
         name: String,
-        options: [{ label: String, value: String, surcharge: Number }],
+        options: [{ label: String, value: String, surcharge: Number, inStock: Boolean }],
       },
     ],
     printLocations: [{ id: String, label: String, surcharge: Number }],

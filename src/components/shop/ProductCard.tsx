@@ -21,6 +21,7 @@ interface ProductCardProduct {
   pricingMode?: "fixed" | "quote";
   availability?: string;
   price?: number;
+  printLocations?: Array<{ id: string; label: string; surcharge?: number }>;
   currency?: string;
   featured?: boolean;
   onSale?: boolean;

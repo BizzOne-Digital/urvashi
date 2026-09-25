@@ -28,12 +28,16 @@ import { ProductDualSideCustomizePreview } from "@/components/customize/ProductD
 import { CustomizePrintPlanPanel } from "@/components/customize/CustomizePrintPlanPanel";
 import {
   type CustomizePrintPlanId,
-  getPrintPlanSurcharge,
   printPlanRequiresBackArtwork,
   printPlanRequiresFrontArtwork,
   printPlanShowsBackPreview,
   printPlanShowsFrontPreview,
 } from "@/lib/customize-print-plan";
+import {
+  defaultPrintPlanForProduct,
+  getProductPrintPlanChoices,
+  getProductPrintPlanSurcharge,
+} from "@/lib/product-print-pricing";
 import {
   FILL_PRINT_AREA_TRANSFORM,
   formatArtworkTransformNote,
@@ -53,6 +57,7 @@ import {
   MAX_CUSTOMIZE_DESIGNS,
   type CustomizeDesignSetPayload,
 } from "@/lib/customize-design-sets";
+import { filterInStockOptions } from "@/lib/product-stock";
 
 type MonerisEnvironment = "qa" | "prod";
 
@@ -85,8 +90,9 @@ interface ProductCustomizeFormProps {
     mockupBackImage?: { url: string; alt?: string };
     variants?: Array<{
       name: string;
-      options: Array<{ label: string; value: string; surcharge?: number }>;
+      options: Array<{ label: string; value: string; surcharge?: number; inStock?: boolean }>;
     }>;
+    printLocations?: Array<{ id: string; label: string; surcharge?: number }>;
     customizer?: {
       printArea?: { x: number; y: number; width: number; height: number };
       previewDisclaimer?: string;
@@ -121,9 +127,39 @@ export function ProductCustomizeForm({ product, monerisMode = "qa" }: ProductCus
   const optionVariant = product.variants?.find(
     (v) => v.name === "Colour" || v.name === "Shape"
   );
-  const [selectedOption, setSelectedOption] = useState(
-    () => optionVariant?.options[0]?.value ?? ""
+  const sizeVariant = product.variants?.find((v) => v.name === "Size");
+  const optionChoices = useMemo(
+    () => (optionVariant ? filterInStockOptions(optionVariant.options) : []),
+    [optionVariant]
   );
+  const sizeChoices = useMemo(
+    () => (sizeVariant ? filterInStockOptions(sizeVariant.options) : []),
+    [sizeVariant]
+  );
+  const [selectedOption, setSelectedOption] = useState(
+    () => optionChoices[0]?.value ?? ""
+  );
+  const [selectedSize, setSelectedSize] = useState(() => sizeChoices[0]?.value ?? "");
+
+  useEffect(() => {
+    if (!optionChoices.length) {
+      setSelectedOption("");
+      return;
+    }
+    if (!optionChoices.some((o) => o.value === selectedOption)) {
+      setSelectedOption(optionChoices[0].value);
+    }
+  }, [optionChoices, selectedOption]);
+
+  useEffect(() => {
+    if (!sizeChoices.length) {
+      setSelectedSize("");
+      return;
+    }
+    if (!sizeChoices.some((o) => o.value === selectedSize)) {
+      setSelectedSize(sizeChoices[0].value);
+    }
+  }, [sizeChoices, selectedSize]);
   const mockupSides = useMemo(
     () =>
       resolveProductMockupSides(
@@ -150,8 +186,14 @@ export function ProductCustomizeForm({ product, monerisMode = "qa" }: ProductCus
   const mockupConfig = getProductMockupConfig(product.slug, product.customizer?.printArea);
   const selectedOptionLabel =
     optionVariant?.options.find((o) => o.value === selectedOption)?.label || selectedOption;
+  const selectedSizeLabel =
+    sizeVariant?.options.find((o) => o.value === selectedSize)?.label || selectedSize;
   const designFee = product.designHelpSurcharge ?? DESIGN_HELP_SURCHARGE;
   const basePrice = product.price ?? 0;
+  const planChoices = useMemo(
+    () => getProductPrintPlanChoices(basePrice, product.printLocations),
+    [basePrice, product.printLocations]
+  );
   const isCalendar = isCalendarProduct(product.slug);
   const dualSide = supportsDualSideCustomize(product.slug);
 
@@ -163,7 +205,9 @@ export function ProductCustomizeForm({ product, monerisMode = "qa" }: ProductCus
   const [previewMonth, setPreviewMonth] = useState(0);
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [printPlan, setPrintPlan] = useState<CustomizePrintPlanId>("print_wrap");
+  const [printPlan, setPrintPlan] = useState<CustomizePrintPlanId>(() =>
+    defaultPrintPlanForProduct(product.printLocations)
+  );
   const [savedDesigns, setSavedDesigns] = useState<SavedCustomizeDesignDraft[]>([]);
   const [designHelp, setDesignHelp] = useState(false);
   const [pendingPayment, setPendingPayment] = useState<PendingMonerisPayment | null>(null);
@@ -186,8 +230,8 @@ export function ProductCustomizeForm({ product, monerisMode = "qa" }: ProductCus
   });
 
   const printSurcharge = useMemo(
-    () => getPrintPlanSurcharge(printPlan, form.quantity),
-    [printPlan, form.quantity]
+    () => getProductPrintPlanSurcharge(printPlan, product.printLocations, form.quantity),
+    [printPlan, product.printLocations, form.quantity]
   );
 
   const merchandiseTotal = useMemo(
@@ -223,8 +267,8 @@ export function ProductCustomizeForm({ product, monerisMode = "qa" }: ProductCus
     setBackArtworkItems([]);
     setFrontTransform(FILL_PRINT_AREA_TRANSFORM);
     setBackTransform(FILL_PRINT_AREA_TRANSFORM);
-    setPrintPlan("print_wrap");
-  }, []);
+    setPrintPlan(defaultPrintPlanForProduct(product.printLocations));
+  }, [product.printLocations]);
 
   const currentDesignHasArtwork = useMemo(
     () => frontArtworkItems.length > 0 || backArtworkItems.length > 0,
@@ -524,10 +568,13 @@ export function ProductCustomizeForm({ product, monerisMode = "qa" }: ProductCus
       const designHelpNote = designHelp
         ? "Customer chose: Customize by our way (DPM design team)."
         : undefined;
-      const optionNote =
+      const optionNotes = [
         selectedOptionLabel && optionVariant
           ? `${optionVariant.name}: ${selectedOptionLabel}`
-          : undefined;
+          : undefined,
+        selectedSizeLabel && sizeVariant ? `${sizeVariant.name}: ${selectedSizeLabel}` : undefined,
+      ].filter(Boolean);
+      const optionNote = optionNotes.length ? optionNotes.join("; ") : undefined;
       const res = await fetch("/api/customize/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -623,7 +670,7 @@ export function ProductCustomizeForm({ product, monerisMode = "qa" }: ProductCus
           </p>
         </div>
 
-        {optionVariant && optionVariant.options.length > 0 && (
+        {optionVariant && optionChoices.length > 0 && (
           <div className="max-w-md">
             <label htmlFor="product-option" className="mb-1 block text-sm font-medium text-pure-paper">
               {optionVariant.name}
@@ -634,13 +681,39 @@ export function ProductCustomizeForm({ product, monerisMode = "qa" }: ProductCus
               onChange={(e) => setSelectedOption(e.target.value)}
               className={fieldClass}
             >
-              {optionVariant.options.map((opt) => (
+              {optionChoices.map((opt) => (
                 <option key={opt.value} value={opt.value}>
                   {opt.label}
                 </option>
               ))}
             </select>
           </div>
+        )}
+        {optionVariant && optionVariant.options.length > 0 && optionChoices.length === 0 && (
+          <p className="text-sm text-amber-200">This product is temporarily out of stock for all options.</p>
+        )}
+
+        {sizeVariant && sizeChoices.length > 0 && (
+          <div className="max-w-md">
+            <label htmlFor="product-size" className="mb-1 block text-sm font-medium text-pure-paper">
+              {sizeVariant.name}
+            </label>
+            <select
+              id="product-size"
+              value={selectedSize}
+              onChange={(e) => setSelectedSize(e.target.value)}
+              className={fieldClass}
+            >
+              {sizeChoices.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+        {sizeVariant && sizeVariant.options.length > 0 && sizeChoices.length === 0 && (
+          <p className="text-sm text-amber-200">All sizes are currently out of stock.</p>
         )}
 
         {isCalendar ? (
@@ -678,6 +751,7 @@ export function ProductCustomizeForm({ product, monerisMode = "qa" }: ProductCus
             <CustomizePrintPlanPanel
               printPlan={printPlan}
               onPrintPlanChange={setPrintPlan}
+              planChoices={planChoices}
               currency={product.currency}
               frontArtworkItems={frontArtworkItems}
               backArtworkItems={backArtworkItems}

@@ -34,6 +34,7 @@ export default async function AdminProductEditPage({ params }: Params) {
         minQuantity: data.minQuantity,
         quantityStep: data.quantityStep,
         stock: data.stock,
+        lowStockThreshold: data.lowStockThreshold,
         availability: data.availability,
         status: data.status,
         featured: data.featured,

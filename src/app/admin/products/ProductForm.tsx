@@ -15,6 +15,7 @@ import {
   type ProductVariantDraft,
 } from "@/components/admin/ProductVariantsEditor";
 import { resolveImageSrc } from "@/lib/image-url";
+import { countInStockOptions } from "@/lib/product-stock";
 import { slugify } from "@/lib/utils";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -32,6 +33,7 @@ interface ProductFormValues {
   minQuantity: number;
   quantityStep: number;
   stock?: number;
+  lowStockThreshold?: number;
   availability: string;
   status: "draft" | "published" | "archived";
   featured: boolean;
@@ -56,6 +58,7 @@ interface ProductFormProps {
     allowsBlankPurchase?: boolean;
     allowsCustomization?: boolean;
     designHelpSurcharge?: number;
+    lowStockThreshold?: number;
     customizer?: { enabled?: boolean; printArea?: { x: number; y: number; width: number; height: number } };
   };
 }
@@ -100,6 +103,7 @@ export function ProductForm({ productId, initialData }: ProductFormProps) {
       minQuantity: initialData?.minQuantity ?? 1,
       quantityStep: initialData?.quantityStep ?? 1,
       stock: initialData?.stock,
+      lowStockThreshold: initialData?.lowStockThreshold ?? 5,
       availability: initialData?.availability || "in_stock",
       status: initialData?.status || "draft",
       featured: initialData?.featured ?? false,
@@ -112,6 +116,7 @@ export function ProductForm({ productId, initialData }: ProductFormProps) {
 
   const name = watch("name");
   const pricingMode = watch("pricingMode");
+  const stockCounts = countInStockOptions(variants);
 
   const onNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -137,6 +142,7 @@ export function ProductForm({ productId, initialData }: ProductFormProps) {
       minQuantity: data.minQuantity,
       quantityStep: data.quantityStep,
       stock: data.stock,
+      lowStockThreshold: data.lowStockThreshold,
       availability: data.availability,
       status: data.status,
       featured: data.featured,
@@ -162,6 +168,7 @@ export function ProductForm({ productId, initialData }: ProductFormProps) {
               label: o.label.trim(),
               value: o.value.trim(),
               ...(o.surcharge != null ? { surcharge: o.surcharge } : {}),
+              inStock: o.inStock !== false,
             })),
         }))
         .filter((v) => v.name && v.options.length > 0),
@@ -256,7 +263,16 @@ export function ProductForm({ productId, initialData }: ProductFormProps) {
       </div>
 
       <div className="rounded-lg border border-chrome-light/20 bg-white p-6 shadow-sm">
-        <h2 className="mb-4 text-lg font-semibold">Pricing & Inventory</h2>
+        <h2 className="mb-2 text-lg font-semibold">Pricing &amp; inventory</h2>
+        <p className="mb-4 text-sm text-chrome-mid">
+          Set overall availability and optional total quantity. Use variant options below to mark which
+          colours or shapes are in stock.
+          {stockCounts.total > 0 && (
+            <span className="mt-1 block font-medium text-ink-black">
+              Options in stock: {stockCounts.inStock} / {stockCounts.total}
+            </span>
+          )}
+        </p>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <FormField label="Pricing Mode">
             <select className={selectClass} {...register("pricingMode")}>
@@ -283,8 +299,16 @@ export function ProductForm({ productId, initialData }: ProductFormProps) {
           <FormField label="Quantity Step">
             <input type="number" className={inputClass} {...register("quantityStep")} />
           </FormField>
-          <FormField label="Stock">
-            <input type="number" className={inputClass} {...register("stock")} />
+          <FormField label="Total stock (optional)">
+            <input
+              type="number"
+              className={inputClass}
+              {...register("stock")}
+              placeholder="Leave empty if not tracking count"
+            />
+          </FormField>
+          <FormField label="Low stock alert below">
+            <input type="number" className={inputClass} {...register("lowStockThreshold")} />
           </FormField>
           <FormField label="Availability">
             <select className={selectClass} {...register("availability")}>
@@ -318,9 +342,10 @@ export function ProductForm({ productId, initialData }: ProductFormProps) {
       </div>
 
       <div className="rounded-lg border border-chrome-light/20 bg-white p-6 shadow-sm">
-        <h2 className="mb-2 text-lg font-semibold">Variants</h2>
+        <h2 className="mb-2 text-lg font-semibold">Variants &amp; stock by option</h2>
         <p className="mb-4 text-sm text-chrome-mid">
-          Colour, shape, or size options. Optional surcharges per option.
+          Colour, shape, or size options. Uncheck <strong>In stock</strong> to hide an option from the shop
+          until you have it again.
         </p>
         <ProductVariantsEditor value={variants} onChange={setVariants} />
       </div>

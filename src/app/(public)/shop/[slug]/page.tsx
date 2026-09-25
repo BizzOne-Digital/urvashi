@@ -54,6 +54,7 @@ export default async function ProductDetailPage({ params }: Props) {
               shortDescription: product.shortDescription,
               pricingMode: product.pricingMode,
               price: product.price,
+              printLocations: product.printLocations,
               currency: product.currency,
               minQuantity: product.minQuantity,
               quantityStep: product.quantityStep,

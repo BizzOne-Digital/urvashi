@@ -18,6 +18,7 @@ interface ProductDetailExperienceProps {
     shortDescription?: string;
     pricingMode: "fixed" | "quote";
     price?: number;
+    printLocations?: Array<{ id: string; label: string; surcharge?: number }>;
     currency?: string;
     minQuantity: number;
     quantityStep: number;
@@ -38,7 +39,6 @@ export function ProductDetailExperience({ product }: ProductDetailExperienceProp
   const heroImage = customized || blank || product.images?.[0];
   const { display } = getProductPriceDisplay(product, product.currency);
   const designFee = product.designHelpSurcharge ?? DESIGN_HELP_SURCHARGE;
-  const customBase = product.price ?? 0;
 
   return (
     <div className="grid gap-10 lg:grid-cols-2 lg:gap-12">
@@ -74,11 +74,8 @@ export function ProductDetailExperience({ product }: ProductDetailExperienceProp
         {allowsCustom && (
           <div className="space-y-4 border-t border-white/10 pt-5">
             <p className="text-sm !text-white">
-              Upload your artwork and we will print this product for you. Starting at{" "}
-              <span className="font-semibold !text-white">
-                {formatCurrency(customBase, product.currency)}
-              </span>
-              .
+              Upload your artwork and we will print this product for you. Pricing shown above
+              applies to your print option at checkout.
             </p>
             <p className="text-sm text-muted">
               Optional design help from our team: +{formatCurrency(designFee, product.currency)} (we send 3–4 design

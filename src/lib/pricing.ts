@@ -1,5 +1,6 @@
 import { IProduct } from "@/models/Product";
 import { IPricingRule } from "@/models/PricingRule";
+import { formatApparelPriceDisplay } from "@/lib/product-print-pricing";
 import { formatCurrency } from "./utils";
 
 export interface CartItemInput {
@@ -182,11 +183,20 @@ export function getProductPriceDisplay(
     price?: number | null;
     availability?: string;
     currency?: string;
+    printLocations?: Array<{ id: string; label: string; surcharge?: number }>;
   },
   currency = "CAD"
 ): { display: string; isQuote: boolean } {
   if (product.pricingMode === "quote" || product.availability === "quote_only" || product.price == null) {
     return { display: "Contact for price", isQuote: true };
+  }
+  const apparelDisplay = formatApparelPriceDisplay(
+    product.price,
+    currency,
+    product.printLocations
+  );
+  if (apparelDisplay) {
+    return { display: apparelDisplay, isQuote: false };
   }
   return { display: formatCurrency(product.price, currency), isQuote: false };
 }

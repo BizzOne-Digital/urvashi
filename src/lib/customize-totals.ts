@@ -4,10 +4,8 @@ import { getCustomizeDesignFee, resolveCustomizeBaseFee } from "@/lib/customize-
 import { calculateOrderTotals, type OrderTotals } from "@/lib/order-totals";
 import type { CalculatedLineItem } from "@/lib/pricing";
 import { getSettings } from "@/lib/settings";
-import {
-  type CustomizePrintPlanId,
-  getPrintPlanSurcharge,
-} from "@/lib/customize-print-plan";
+import type { CustomizePrintPlanId } from "@/lib/customize-print-plan";
+import { getProductPrintPlanSurcharge } from "@/lib/product-print-pricing";
 
 export interface CustomizeTotalsInput {
   productSlug?: string;
@@ -36,36 +34,46 @@ export async function calculateCustomizeTotals(
   });
   const designFee = input.preferDesign ? getCustomizeDesignFee() : 0;
   const qty = input.quantity && input.quantity > 0 ? input.quantity : 1;
-  const printSurcharge = getPrintPlanSurcharge(input.printPlan || "blank", qty);
-  const productSubtotal = baseFee;
-  const subtotal = Math.round((productSubtotal + designFee + printSurcharge) * 100) / 100;
 
   await connectDB();
   const settings = await getSettings();
 
+  let printLocations: Array<{ id: string; label: string; surcharge?: number }> | undefined;
   let items: CalculatedLineItem[] = [];
   const productMap = new Map<string, IProduct>();
 
-  if (input.productSlug) {
-    const product = await Product.findOne({ slug: input.productSlug, status: "published" });
-    if (product) {
-      const qty = input.quantity && input.quantity > 0 ? input.quantity : 1;
-      const lineItem: CalculatedLineItem = {
-        productId: product._id.toString(),
-        productSlug: product.slug,
-        productName: product.name,
-        sku: product.sku,
-        quantity: qty,
-        unitPrice: product.price ?? baseFee / qty,
-        lineTotal: productSubtotal,
-        pricingMode: "fixed",
-        customization: {},
-        errors: [],
-      };
-      items = [lineItem];
-      productMap.set(product._id.toString(), product);
-    }
+  const product = input.productSlug
+    ? await Product.findOne({ slug: input.productSlug, status: "published" })
+    : null;
+
+  if (product) {
+    printLocations = product.printLocations;
   }
+
+  const printSurcharge = getProductPrintPlanSurcharge(
+    input.printPlan || "blank",
+    printLocations,
+    qty
+  );
+  const productSubtotal = baseFee;
+
+  if (product) {
+    const lineItem: CalculatedLineItem = {
+      productId: product._id.toString(),
+      productSlug: product.slug,
+      productName: product.name,
+      sku: product.sku,
+      quantity: qty,
+      unitPrice: product.price ?? baseFee / qty,
+      lineTotal: productSubtotal,
+      pricingMode: "fixed",
+      customization: {},
+      errors: [],
+    };
+    items = [lineItem];
+    productMap.set(product._id.toString(), product);
+  }
+  const subtotal = Math.round((productSubtotal + designFee + printSurcharge) * 100) / 100;
 
   const totals = await calculateOrderTotals({
     subtotal,

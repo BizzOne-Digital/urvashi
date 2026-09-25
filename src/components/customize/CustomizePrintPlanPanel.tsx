@@ -1,11 +1,11 @@
 "use client";
 
 import {
-  CUSTOMIZE_PRINT_PLAN_OPTIONS,
   type CustomizePrintPlanId,
   printPlanRequiresBackArtwork,
   printPlanRequiresFrontArtwork,
 } from "@/lib/customize-print-plan";
+import type { ProductPrintPlanChoice } from "@/lib/product-print-pricing";
 import {
   ArtworkMultiUpload,
   type LocalArtworkFile,
@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils";
 interface CustomizePrintPlanPanelProps {
   printPlan: CustomizePrintPlanId;
   onPrintPlanChange: (plan: CustomizePrintPlanId) => void;
+  planChoices: ProductPrintPlanChoice[];
   currency?: string;
   frontArtworkItems: LocalArtworkFile[];
   backArtworkItems: LocalArtworkFile[];
@@ -29,6 +30,7 @@ interface CustomizePrintPlanPanelProps {
 export function CustomizePrintPlanPanel({
   printPlan,
   onPrintPlanChange,
+  planChoices,
   currency = "CAD",
   frontArtworkItems,
   backArtworkItems,
@@ -45,7 +47,7 @@ export function CustomizePrintPlanPanel({
   return (
     <div className={cn("space-y-6", className)}>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-        {CUSTOMIZE_PRINT_PLAN_OPTIONS.map((plan) => {
+        {planChoices.map((plan) => {
           const selected = printPlan === plan.id;
           return (
             <button
@@ -60,11 +62,9 @@ export function CustomizePrintPlanPanel({
               )}
             >
               <span className="block font-semibold text-pure-paper">{plan.label}</span>
-              {plan.surcharge > 0 && (
-                <span className="mt-1 block text-xs text-cyan">
-                  +{formatCurrency(plan.surcharge, currency)}
-                </span>
-              )}
+              <span className="mt-1 block text-xs text-cyan">
+                {formatCurrency(plan.unitTotal, currency)} each
+              </span>
             </button>
           );
         })}

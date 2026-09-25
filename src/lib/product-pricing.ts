@@ -27,21 +27,21 @@ export const PRICING_CATALOG: PricingCatalogEntry[] = [
   { slug: "caps", displayName: "Caps", price: 12.99, note: "Red, black, or navy blue" },
   {
     slug: "custom-t-shirt-half-sleeve",
-    displayName: "Custom t-shirt — half sleeve",
+    displayName: "Custom t-shirt — half sleeve (round neck)",
     price: 19.99,
-    note: "One-side $19.99 · front & back $25.99",
+    note: "One side print $19.99 · front & back $25.99 · black, white, navy, dark green",
   },
   {
     slug: "custom-t-shirt-full-sleeve",
-    displayName: "Custom t-shirt — full sleeve",
+    displayName: "Custom t-shirt — full sleeve (round neck)",
     price: 22.99,
-    note: "One-side $22.99 · front & back $27.99",
+    note: "One side print $22.99 · front & back $27.99 · black, white, navy, dark green",
   },
   {
     slug: "custom-hoodies",
     displayName: "Custom hoodies",
     price: 35.99,
-    note: "One-side $35.99 · front & back $39.99",
+    note: "One side print $35.99 · front & back $39.99 · black, red, navy, dark green",
   },
   {
     slug: "fridge-magnets",

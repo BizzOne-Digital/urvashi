@@ -5,7 +5,7 @@ import { FormField, inputClass } from "@/components/admin/FormField";
 
 export interface ProductVariantDraft {
   name: string;
-  options: Array<{ label: string; value: string; surcharge?: number }>;
+  options: Array<{ label: string; value: string; surcharge?: number; inStock?: boolean }>;
 }
 
 interface ProductVariantsEditorProps {
@@ -15,7 +15,7 @@ interface ProductVariantsEditorProps {
 
 export function ProductVariantsEditor({ value, onChange }: ProductVariantsEditorProps) {
   const addVariant = () => {
-    onChange([...value, { name: "Colour", options: [{ label: "", value: "" }] }]);
+    onChange([...value, { name: "Colour", options: [{ label: "", value: "", inStock: true }] }]);
   };
 
   const updateVariant = (index: number, patch: Partial<ProductVariantDraft>) => {
@@ -28,7 +28,9 @@ export function ProductVariantsEditor({ value, onChange }: ProductVariantsEditor
 
   const addOption = (variantIndex: number) => {
     const next = value.map((v, i) =>
-      i === variantIndex ? { ...v, options: [...v.options, { label: "", value: "" }] } : v
+      i === variantIndex
+        ? { ...v, options: [...v.options, { label: "", value: "", inStock: true }] }
+        : v
     );
     onChange(next);
   };
@@ -36,15 +38,18 @@ export function ProductVariantsEditor({ value, onChange }: ProductVariantsEditor
   const updateOption = (
     variantIndex: number,
     optionIndex: number,
-    field: "label" | "value" | "surcharge",
-    raw: string
+    field: "label" | "value" | "surcharge" | "inStock",
+    raw: string | boolean
   ) => {
     const next = value.map((v, i) => {
       if (i !== variantIndex) return v;
       const options = v.options.map((opt, j) => {
         if (j !== optionIndex) return opt;
+        if (field === "inStock") {
+          return { ...opt, inStock: Boolean(raw) };
+        }
         if (field === "surcharge") {
-          const num = raw === "" ? undefined : parseFloat(raw);
+          const num = typeof raw === "string" && raw !== "" ? parseFloat(raw) : undefined;
           return { ...opt, surcharge: Number.isFinite(num) ? num : undefined };
         }
         return { ...opt, [field]: raw };
@@ -83,9 +88,15 @@ export function ProductVariantsEditor({ value, onChange }: ProductVariantsEditor
             </Button>
           </div>
 
+          <p className="mb-2 text-xs text-chrome-mid">
+            Tick <strong>In stock</strong> for colours/shapes you have on hand. Untick to hide from the shop.
+          </p>
           <div className="space-y-2">
             {variant.options.map((opt, oi) => (
-              <div key={oi} className="grid gap-2 sm:grid-cols-[1fr_1fr_100px_auto]">
+              <div
+                key={oi}
+                className="grid gap-2 rounded border border-chrome-light/20 p-2 sm:grid-cols-[1fr_1fr_88px_100px_auto]"
+              >
                 <input
                   className={inputClass}
                   placeholder="Label (e.g. Navy blue)"
@@ -106,6 +117,14 @@ export function ProductVariantsEditor({ value, onChange }: ProductVariantsEditor
                   value={opt.surcharge ?? ""}
                   onChange={(e) => updateOption(vi, oi, "surcharge", e.target.value)}
                 />
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={opt.inStock !== false}
+                    onChange={(e) => updateOption(vi, oi, "inStock", e.target.checked)}
+                  />
+                  In stock
+                </label>
                 <Button type="button" variant="ghost" onClick={() => removeOption(vi, oi)}>
                   ×
                 </Button>
