@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" fill="none">
+  <rect width="800" height="800" fill="#FEFEFE"/>
+  <text x="400" y="60" text-anchor="middle" font-family="system-ui,sans-serif" font-size="24" fill="#909092">DEMO ASSET</text>
+  <rect x="350" y="250" width="100" height="350" rx="20" fill="#202124"/>
+  <rect x="360" y="200" width="80" height="60" rx="8" fill="#065EE5"/>
+  <circle cx="400" cy="380" r="20" fill="#0D97FC" opacity="0.3"/>
+  <text x="400" y="660" text-anchor="middle" font-family="system-ui,sans-serif" font-size="18" fill="#065EE5">Custom Pen</text>
+</svg>
