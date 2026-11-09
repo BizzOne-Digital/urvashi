@@ -39,55 +39,96 @@ function normalizePostal(postal?: string): string {
 }
 
 function getCanadaPostCredentials() {
-  const username =
-    process.env.CANADA_POST_USERNAME?.trim() || process.env.CANADA_POST_API_KEY?.trim();
-  const password =
-    process.env.CANADA_POST_PASSWORD?.trim() || process.env.CANADA_POST_API_SECRET?.trim();
+  const apiKey = process.env.CANADA_POST_API_KEY?.trim();
+  const apiSecret = process.env.CANADA_POST_API_SECRET?.trim();
   const customerNumber = process.env.CANADA_POST_CUSTOMER_NUMBER?.trim();
-
-  return { username, password, customerNumber };
+  const contractId = process.env.CANADA_POST_CONTRACT_ID?.trim();
+  return { apiKey, apiSecret, customerNumber, contractId };
 }
 
 function isCanadaPostConfigured(): boolean {
-  const { username, password, customerNumber } = getCanadaPostCredentials();
+  const { apiKey, apiSecret } = getCanadaPostCredentials();
   const origin = process.env.COMMERCE_ORIGIN_POSTAL_CODE?.trim();
-  if (!username || !password || !origin) return false;
-  // Production keys from Canada Post require a customer number in the rating request.
-  if (process.env.CANADA_POST_USE_PRODUCTION === "true" && !customerNumber) {
-    return false;
-  }
-  return true;
+  return Boolean(apiKey && apiSecret && origin);
 }
 
-function parsePriceQuotes(xml: string, serviceCodes: string[]): Map<string, number> {
-  const prices = new Map<string, number>();
-  const quoteBlocks = xml.match(/<price-quote>[\s\S]*?<\/price-quote>/gi) || [];
+// Canada Post Developer Portal REST API (Rating 4.x): OAuth 2.0 client credentials + JSON.
+const API_GATEWAY =
+  process.env.CANADA_POST_API_GATEWAY?.trim() ||
+  "https://api.canadapost-postescanada.ca/prod/devportal-portaildesdeveloppeurs";
 
-  for (const block of quoteBlocks) {
-    const codeMatch = block.match(/<service-code>([^<]+)<\/service-code>/i);
-    if (!codeMatch) continue;
+let cachedToken: { value: string; expiresAt: number } | null = null;
 
-    const code = codeMatch[1].trim();
-    if (!serviceCodes.includes(code)) continue;
-
-    const amountMatch = block.match(
-      /<(?:due|due-amount|price)>([\d.]+)<\/(?:due|due-amount|price)>/i
-    );
-    if (amountMatch) {
-      prices.set(code, parseFloat(amountMatch[1]));
-    }
+async function getAccessToken(forceRefresh = false): Promise<string> {
+  if (!forceRefresh && cachedToken && cachedToken.expiresAt > Date.now() + 60_000) {
+    return cachedToken.value;
   }
 
-  if (prices.size > 0) return prices;
+  const { apiKey, apiSecret } = getCanadaPostCredentials();
+  if (!apiKey || !apiSecret) throw new Error("Canada Post credentials missing");
 
-  // Fallback: scan the full document per service code
-  for (const code of serviceCodes) {
-    const blockRegex = new RegExp(
-      `<service-code>${code}</service-code>[\\s\\S]*?<(?:due|due-amount|price)>([\\d.]+)<`,
-      "i"
-    );
-    const match = xml.match(blockRegex);
-    if (match) prices.set(code, parseFloat(match[1]));
+  const res = await fetch(`${API_GATEWAY}/cpc-api-native-oauth-provider/oauth2/token`, {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/x-www-form-urlencoded",
+      "X-IBM-Client-Id": apiKey,
+      "X-IBM-Client-Secret": apiSecret,
+    },
+    body: "scope=merchant&grant_type=client_credentials",
+    signal: AbortSignal.timeout(12000),
+  });
+
+  const data = (await res.json().catch(() => ({}))) as {
+    access_token?: string;
+    expires_in?: number;
+    error?: string;
+  };
+  if (!res.ok || !data.access_token) {
+    console.error("Canada Post token error:", res.status, data.error);
+    throw new Error(`Canada Post authentication failed (${res.status})`);
+  }
+
+  cachedToken = {
+    value: data.access_token,
+    expiresAt: Date.now() + (data.expires_in ?? 3600) * 1000,
+  };
+  return cachedToken.value;
+}
+
+interface PriceQuoteJson {
+  serviceCode?: string;
+  priceDetails?: {
+    due?: number | string;
+    taxes?: Record<string, { amt?: number | string } | undefined>;
+  };
+}
+
+function num(v: unknown): number {
+  const n = typeof v === "number" ? v : parseFloat(String(v ?? ""));
+  return Number.isFinite(n) ? n : 0;
+}
+
+/**
+ * The quoted "due" amount includes GST/HST/PST. Tax is added separately at checkout,
+ * so return the pre-tax amount (base + surcharges) to avoid charging tax twice.
+ */
+function parsePriceQuotes(json: unknown, serviceCodes: string[]): Map<string, number> {
+  const prices = new Map<string, number>();
+  const quotes: PriceQuoteJson[] = Array.isArray(json)
+    ? json
+    : ((json as { priceQuotes?: PriceQuoteJson[] })?.priceQuotes ?? []);
+
+  for (const quote of quotes) {
+    const code = quote.serviceCode?.trim();
+    if (!code || !serviceCodes.includes(code)) continue;
+
+    const due = num(quote.priceDetails?.due);
+    if (!due) continue;
+
+    const taxes = quote.priceDetails?.taxes ?? {};
+    const tax = num(taxes.gst?.amt) + num(taxes.pst?.amt) + num(taxes.hst?.amt);
+    prices.set(code, Math.round((due - tax) * 100) / 100);
   }
 
   return prices;
@@ -99,58 +140,48 @@ async function fetchCanadaPostRates(
   parcel: ParcelSpec,
   serviceCodes: string[]
 ): Promise<Map<string, number>> {
-  const { username, password, customerNumber } = getCanadaPostCredentials();
-  if (!username || !password) throw new Error("Canada Post credentials missing");
+  const { customerNumber, contractId } = getCanadaPostCredentials();
+  const quoteType =
+    process.env.CANADA_POST_QUOTE_TYPE?.trim() || (customerNumber ? "commercial" : "counter");
 
-  const isProd = process.env.CANADA_POST_USE_PRODUCTION === "true";
-  const base = isProd
-    ? "https://soa-gw.canadapost.ca"
-    : "https://ct.soa-gw.canadapost.ca";
-
-  const serviceXml = serviceCodes.map((c) => `<service-code>${c}</service-code>`).join("");
-  const customerXml = customerNumber
-    ? `<customer-number>${customerNumber}</customer-number>`
-    : "";
-
-  const xml = `<?xml version="1.0" encoding="UTF-8"?>
-<mailing-scenario xmlns="http://www.canadapost.ca/ws/shipment-v8">
-  ${customerXml}
-  <origin-postal-code>${normalizePostal(originPostal)}</origin-postal-code>
-  <destination>
-    <domestic>
-      <postal-code>${normalizePostal(destinationPostal)}</postal-code>
-    </domestic>
-  </destination>
-  <parcel-characteristics>
-    <weight>${parcel.weightKg}</weight>
-    <dimensions>
-      <length>${parcel.lengthCm}</length>
-      <width>${parcel.widthCm}</width>
-      <height>${parcel.heightCm}</height>
-    </dimensions>
-  </parcel-characteristics>
-  <services>
-    ${serviceXml}
-  </services>
-</mailing-scenario>`;
-
-  const auth = Buffer.from(`${username}:${password}`).toString("base64");
-  const res = await fetch(`${base}/rs/shipment/price`, {
-    method: "POST",
-    headers: {
-      Authorization: `Basic ${auth}`,
-      "Content-Type": "application/vnd.cpc.shipment-v8+xml",
-      Accept: "application/vnd.cpc.shipment-v8+xml",
+  const body = {
+    ...(customerNumber ? { customerNumber } : {}),
+    ...(customerNumber && contractId ? { contractId } : {}),
+    quoteType,
+    parcelCharacteristics: {
+      weight: Number(parcel.weightKg.toFixed(3)),
+      dimensions: {
+        length: Number(parcel.lengthCm.toFixed(1)),
+        width: Number(parcel.widthCm.toFixed(1)),
+        height: Number(parcel.heightCm.toFixed(1)),
+      },
     },
-    body: xml,
-    signal: AbortSignal.timeout(12000),
-  });
+    services: serviceCodes,
+    originPostalCode: normalizePostal(originPostal),
+    destination: { domestic: { postalCode: normalizePostal(destinationPostal) } },
+  };
 
-  const text = await res.text();
+  const send = async (forceRefresh: boolean) =>
+    fetch(`${API_GATEWAY}/rating/v1/prices`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${await getAccessToken(forceRefresh)}`,
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        "Accept-Language": "en-CA",
+      },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(12000),
+    });
+
+  let res = await send(false);
+  if (res.status === 401) res = await send(true);
+
+  const data: unknown = await res.json().catch(() => null);
   if (!res.ok) {
-    const descMatch = text.match(/<description>([^<]+)<\/description>/i);
-    const detail = descMatch?.[1]?.trim();
-    console.error("Canada Post rating error:", res.status, text.slice(0, 500));
+    const err = data as { detail?: string; title?: string; errors?: { message?: string }[] } | null;
+    const detail = err?.errors?.[0]?.message || err?.detail || err?.title;
+    console.error("Canada Post rating error:", res.status, JSON.stringify(data)?.slice(0, 500));
     throw new Error(
       detail
         ? `Canada Post rate lookup failed: ${detail}`
@@ -158,9 +189,9 @@ async function fetchCanadaPostRates(
     );
   }
 
-  const prices = parsePriceQuotes(text, serviceCodes);
+  const prices = parsePriceQuotes(data, serviceCodes);
   if (prices.size === 0) {
-    console.error("Canada Post rating empty quotes:", text.slice(0, 500));
+    console.error("Canada Post rating empty quotes:", JSON.stringify(data)?.slice(0, 500));
     throw new Error("Canada Post returned no rates for this postal code");
   }
 
@@ -212,6 +243,10 @@ export async function getShippingRates(
       priceMap = await fetchCanadaPostRates(originPostal, dest, parcel, serviceCodes);
       rateSource = "canada_post";
     } catch (error) {
+      // Never silently charge customers made-up prices when live rating is configured.
+      if (process.env.CANADA_POST_ALLOW_ESTIMATE_FALLBACK !== "true") {
+        throw error;
+      }
       console.warn("[canada-post] Live rating failed, using estimate:", error);
       priceMap = estimateRates(parcel);
       rateSource = "estimate";
@@ -222,68 +257,28 @@ export async function getShippingRates(
   }
 
   const quotes: ShippingRateQuote[] = [];
+  const methods = [
+    [SHIPPING_METHODS.canada_post_standard, "3–7 business days"],
+    [SHIPPING_METHODS.canada_post_express, "1–3 business days"],
+  ] as const;
 
-  const standardPrice = priceMap.get(SHIPPING_METHODS.canada_post_standard.serviceCode);
-  if (standardPrice != null) {
+  for (const [method, estimatedDays] of methods) {
+    const price = priceMap.get(method.serviceCode);
+    if (price == null) continue;
     quotes.push({
-      id: "canada_post_standard",
-      serviceCode: SHIPPING_METHODS.canada_post_standard.serviceCode,
-      label: SHIPPING_METHODS.canada_post_standard.label,
-      description: SHIPPING_METHODS.canada_post_standard.description,
-      price: standardPrice,
+      id: method.id,
+      serviceCode: method.serviceCode,
+      label: method.label,
+      description: method.description,
+      price,
       currency,
-      estimatedDays: "3–7 business days",
-      tracked: true,
-    });
-  }
-
-  const expressPrice = priceMap.get(SHIPPING_METHODS.canada_post_express.serviceCode);
-  if (expressPrice != null) {
-    quotes.push({
-      id: "canada_post_express",
-      serviceCode: SHIPPING_METHODS.canada_post_express.serviceCode,
-      label: SHIPPING_METHODS.canada_post_express.label,
-      description: SHIPPING_METHODS.canada_post_express.description,
-      price: expressPrice,
-      currency,
-      estimatedDays: "1–3 business days",
+      estimatedDays,
       tracked: true,
     });
   }
 
   if (options.pickupEnabled) {
     quotes.push(buildPickupQuote(currency));
-  }
-
-  if (quotes.length === 0) {
-    priceMap = estimateRates(parcel);
-    rateSource = "estimate";
-    const standardPrice = priceMap.get(SHIPPING_METHODS.canada_post_standard.serviceCode);
-    if (standardPrice != null) {
-      quotes.push({
-        id: "canada_post_standard",
-        serviceCode: SHIPPING_METHODS.canada_post_standard.serviceCode,
-        label: SHIPPING_METHODS.canada_post_standard.label,
-        description: SHIPPING_METHODS.canada_post_standard.description,
-        price: standardPrice,
-        currency,
-        estimatedDays: "3–7 business days",
-        tracked: true,
-      });
-    }
-    const expressPrice = priceMap.get(SHIPPING_METHODS.canada_post_express.serviceCode);
-    if (expressPrice != null) {
-      quotes.push({
-        id: "canada_post_express",
-        serviceCode: SHIPPING_METHODS.canada_post_express.serviceCode,
-        label: SHIPPING_METHODS.canada_post_express.label,
-        description: SHIPPING_METHODS.canada_post_express.description,
-        price: expressPrice,
-        currency,
-        estimatedDays: "1–3 business days",
-        tracked: true,
-      });
-    }
   }
 
   return { rates: quotes, rateSource };
