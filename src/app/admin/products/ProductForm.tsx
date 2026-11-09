@@ -41,7 +41,18 @@ interface ProductFormValues {
   tags?: string;
   seoTitle?: string;
   seoDescription?: string;
+  weightGrams?: number;
+  lengthCm?: number;
+  widthCm?: number;
+  heightCm?: number;
 }
+
+/** Empty input -> undefined (saved as "not set"), otherwise a number. */
+const optionalNumber = (v: unknown) => {
+  if (v === "" || v == null) return undefined;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : undefined;
+};
 
 interface ProductFormProps {
   productId?: string;
@@ -111,6 +122,10 @@ export function ProductForm({ productId, initialData }: ProductFormProps) {
       tags: initialData?.tags || "",
       seoTitle: initialData?.seoTitle || "",
       seoDescription: initialData?.seoDescription || "",
+      weightGrams: initialData?.weightGrams,
+      lengthCm: initialData?.lengthCm,
+      widthCm: initialData?.widthCm,
+      heightCm: initialData?.heightCm,
     },
   });
 
@@ -127,6 +142,15 @@ export function ProductForm({ productId, initialData }: ProductFormProps) {
   const onSubmit = async (data: ProductFormValues) => {
     if (!data.name || !data.sku) {
       toast.error("Name and SKU are required");
+      return;
+    }
+    if (data.pricingMode === "fixed" && !(Number(data.price) > 0)) {
+      toast.error("Enter a price, or switch Pricing Mode to Quote Only");
+      return;
+    }
+    const hasBothSides = printLocations.some((p) => p.id.trim() === "front_and_back");
+    if (hasBothSides && !printLocations.some((p) => p.id.trim() === "front")) {
+      toast.error('Print options: add a "front" row (one side) next to "front_and_back"');
       return;
     }
     const payload = {
@@ -150,11 +174,16 @@ export function ProductForm({ productId, initialData }: ProductFormProps) {
       tags: data.tags ? data.tags.split(",").map((t) => t.trim()).filter(Boolean) : [],
       categorySlug: categorySlug || undefined,
       images,
-      blankImage,
-      customizedImage,
-      cardImage,
-      mockupFrontImage,
-      mockupBackImage,
+      // null (not undefined) so a removed image is actually cleared on save
+      blankImage: blankImage ?? null,
+      customizedImage: customizedImage ?? null,
+      cardImage: cardImage ?? null,
+      mockupFrontImage: mockupFrontImage ?? null,
+      mockupBackImage: mockupBackImage ?? null,
+      weightGrams: optionalNumber(data.weightGrams) ?? null,
+      lengthCm: optionalNumber(data.lengthCm) ?? null,
+      widthCm: optionalNumber(data.widthCm) ?? null,
+      heightCm: optionalNumber(data.heightCm) ?? null,
       allowsBlankPurchase,
       allowsCustomization,
       designHelpSurcharge,
@@ -335,10 +364,56 @@ export function ProductForm({ productId, initialData }: ProductFormProps) {
       <div className="rounded-lg border border-chrome-light/20 bg-white p-6 shadow-sm">
         <h2 className="mb-2 text-lg font-semibold">Print options &amp; surcharges</h2>
         <p className="mb-4 text-sm text-chrome-mid">
-          Set the base price above for one-side print. Add rows below for front &amp; back (surcharge added at
-          checkout).
+          <strong>Front only:</strong> customers print on one side. <strong>Front &amp; back option:</strong>{" "}
+          customers can choose one side or both (surcharge added per item). The base price above is the
+          one-side price. Upload a back image below so the back preview shows the right photo.
         </p>
         <ProductPrintLocationsEditor value={printLocations} onChange={setPrintLocations} />
+      </div>
+
+      <div className="rounded-lg border border-chrome-light/20 bg-white p-6 shadow-sm">
+        <h2 className="mb-2 text-lg font-semibold">Shipping parcel (Canada Post)</h2>
+        <p className="mb-4 text-sm text-chrome-mid">
+          Weight and size of one packed item. Used to get live Canada Post rates. Leave empty to use the
+          default for this product type.
+        </p>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <FormField label="Weight (grams)">
+            <input
+              type="number"
+              min="0"
+              className={inputClass}
+              {...register("weightGrams", { setValueAs: optionalNumber })}
+            />
+          </FormField>
+          <FormField label="Length (cm)">
+            <input
+              type="number"
+              min="0"
+              step="0.1"
+              className={inputClass}
+              {...register("lengthCm", { setValueAs: optionalNumber })}
+            />
+          </FormField>
+          <FormField label="Width (cm)">
+            <input
+              type="number"
+              min="0"
+              step="0.1"
+              className={inputClass}
+              {...register("widthCm", { setValueAs: optionalNumber })}
+            />
+          </FormField>
+          <FormField label="Height (cm)">
+            <input
+              type="number"
+              min="0"
+              step="0.1"
+              className={inputClass}
+              {...register("heightCm", { setValueAs: optionalNumber })}
+            />
+          </FormField>
+        </div>
       </div>
 
       <div className="rounded-lg border border-chrome-light/20 bg-white p-6 shadow-sm">

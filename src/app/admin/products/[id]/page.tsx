@@ -55,6 +55,10 @@ export default async function AdminProductEditPage({ params }: Params) {
         allowsCustomization: data.allowsCustomization,
         designHelpSurcharge: data.designHelpSurcharge,
         customizer: data.customizer,
+        weightGrams: data.weightGrams,
+        lengthCm: data.lengthCm,
+        widthCm: data.widthCm,
+        heightCm: data.heightCm,
       }}
     />
   );

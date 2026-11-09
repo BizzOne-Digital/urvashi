@@ -5,6 +5,7 @@ import Product from "@/models/Product";
 import { serializeDocs } from "@/lib/serialize";
 import { revalidateProducts, revalidateProduct } from "@/lib/revalidation";
 import { slugify } from "@/lib/utils";
+import { splitNullFields } from "@/lib/mongo-update";
 
 export async function GET() {
   try {
@@ -27,7 +28,8 @@ export async function POST(request: NextRequest) {
 
   try {
     await connectDB();
-    const body = await request.json();
+    // Cleared optional fields arrive as null; a new product just omits them.
+    const body = splitNullFields(await request.json()).set as Record<string, any>;
 
     if (!body.name || !body.sku) {
       return NextResponse.json({ error: "Name and SKU are required" }, { status: 400 });

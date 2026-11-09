@@ -4,6 +4,7 @@ import { connectDB } from "@/lib/db";
 import Product from "@/models/Product";
 import { serialize } from "@/lib/serialize";
 import { revalidateProducts, revalidateProduct } from "@/lib/revalidation";
+import { splitNullFields } from "@/lib/mongo-update";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -33,8 +34,12 @@ export async function PUT(request: NextRequest, { params }: Params) {
   const { id } = await params;
   try {
     await connectDB();
-    const body = await request.json();
-    const product = await Product.findByIdAndUpdate(id, { $set: body }, { new: true, runValidators: true });
+    const { set, unset } = splitNullFields(await request.json());
+    const product = await Product.findByIdAndUpdate(
+      id,
+      { $set: set, ...(Object.keys(unset).length ? { $unset: unset } : {}) },
+      { new: true, runValidators: true }
+    );
     if (!product) {
       return NextResponse.json({ error: "Product not found" }, { status: 404 });
     }
