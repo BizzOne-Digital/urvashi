@@ -238,7 +238,7 @@ export function getBackPrintArea(config: ProductMockupConfig): PrintAreaRect {
 /** Print-area presets tuned to each product blank photo. */
 const PRODUCT_MOCKUP_BY_SLUG: Record<string, ProductMockupConfig> = {
   tumblers: {
-    printArea: { x: 58, y: 27, width: 23, height: 48 },
+    printArea: { x: 38, y: 28, width: 24, height: 52 },
     rounded: true,
     borderRadius: "10%",
   },

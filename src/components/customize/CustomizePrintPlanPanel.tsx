@@ -13,6 +13,15 @@ import {
 import { formatCurrency } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 
+/** Tells the customer how many pictures each print option needs. */
+const PLAN_HINTS: Record<CustomizePrintPlanId, string> = {
+  blank: "",
+  print_front: "1 picture on the front",
+  print_back: "1 picture on the back",
+  print_front_and_back: "2 pictures: one for the front, one for the back",
+  print_wrap: "1 picture wrapped from front to back",
+};
+
 interface CustomizePrintPlanPanelProps {
   printPlan: CustomizePrintPlanId;
   onPrintPlanChange: (plan: CustomizePrintPlanId) => void;
@@ -73,6 +82,9 @@ export function CustomizePrintPlanPanel({
               <span className="mt-1 block text-xs text-cyan">
                 {formatCurrency(plan.unitTotal, currency)} each
               </span>
+              {PLAN_HINTS[plan.id] && (
+                <span className="mt-1 block text-[11px] text-chrome-mid">{PLAN_HINTS[plan.id]}</span>
+              )}
             </button>
           );
         })}
@@ -87,7 +99,7 @@ export function CustomizePrintPlanPanel({
               onChange={onFrontArtworkChange}
               rightsConfirmed={rightsConfirmed}
               customerNote={customerNote}
-              label="From Front"
+              label={printPlan === "print_front_and_back" ? "Front picture" : "From Front"}
               hint="Upload artwork for the front."
               hidePreviews
               maxFiles={1}
@@ -99,7 +111,7 @@ export function CustomizePrintPlanPanel({
               onChange={onBackArtworkChange}
               rightsConfirmed={rightsConfirmed}
               customerNote={customerNote}
-              label="To Back"
+              label={printPlan === "print_front_and_back" ? "Back picture" : "To Back"}
               hint="Upload artwork for the back."
               hidePreviews
               maxFiles={1}
@@ -108,7 +120,15 @@ export function CustomizePrintPlanPanel({
           {printPlan === "print_wrap" && (
             <p className="text-xs text-chrome-mid">
               Wrap printing uses your front artwork across the front and back preview. Our team aligns the
-              seam on the final product.
+              seam on the final product. Want a different picture on the back? Choose{" "}
+              <button
+                type="button"
+                className="underline hover:text-pure-paper"
+                onClick={() => onPrintPlanChange("print_front_and_back")}
+              >
+                Print Front and Back
+              </button>{" "}
+              above to upload two pictures.
             </p>
           )}
         </div>

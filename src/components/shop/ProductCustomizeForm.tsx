@@ -26,6 +26,7 @@ import {
 import { CalendarMockupPreview } from "@/components/customize/CalendarMockupPreview";
 import { ProductDualSideCustomizePreview } from "@/components/customize/ProductDualSideCustomizePreview";
 import { CustomizePrintPlanPanel } from "@/components/customize/CustomizePrintPlanPanel";
+import { Product360Preview } from "@/components/customize/Product360Preview";
 import {
   type CustomizePrintPlanId,
   printPlanRequiresBackArtwork,
@@ -211,7 +212,7 @@ export function ProductCustomizeForm({ product, monerisMode = "qa" }: ProductCus
     defaultPrintPlanForProduct(product.printLocations, product.slug)
   );
   const [savedDesigns, setSavedDesigns] = useState<SavedCustomizeDesignDraft[]>([]);
-  const [previewMode, setPreviewMode] = useState<"edit" | "estimate">("edit");
+  const [previewMode, setPreviewMode] = useState<"edit" | "estimate" | "view360">("edit");
   const [designHelp, setDesignHelp] = useState(false);
   const [pendingPayment, setPendingPayment] = useState<PendingMonerisPayment | null>(null);
   const [ratesLoading, setRatesLoading] = useState(false);
@@ -272,6 +273,11 @@ export function ProductCustomizeForm({ product, monerisMode = "qa" }: ProductCus
       backArtworkItems.some((item) => item.file.type.startsWith("image/")),
     [frontArtworkItems, backArtworkItems]
   );
+  // The estimate / 360 tabs only exist once there is artwork, so fall back to the editor without it.
+  useEffect(() => {
+    if (!hasArtworkForEstimate && previewMode !== "edit") setPreviewMode("edit");
+  }, [hasArtworkForEstimate, previewMode]);
+
   const referenceExampleSrc = customized?.url ? resolveImageSrc(customized.url) : undefined;
   const needsArtworkRights =
     isCalendar ||
@@ -789,29 +795,64 @@ export function ProductCustomizeForm({ product, monerisMode = "qa" }: ProductCus
                   >
                     Review estimate
                   </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={previewMode === "view360"}
+                    className={cn(
+                      "rounded-md px-4 py-2 text-sm font-medium transition-colors",
+                      previewMode === "view360"
+                        ? "bg-cyan text-pure-paper"
+                        : "text-chrome-light hover:text-pure-paper"
+                    )}
+                    onClick={() => setPreviewMode("view360")}
+                  >
+                    360° view
+                  </button>
                 </div>
               )}
-              <ProductDualSideCustomizePreview
-                productName={product.name}
-                baseImageSrc={baseImage}
-                backImageSrc={backBaseImage}
-                frontArtworkUrls={getArtworkImagePreviewUrls(frontArtworkItems)}
-                backArtworkUrls={backPreviewUrls}
-                mockupConfig={mockupConfig}
-                frontTransform={frontTransform}
-                backTransform={backTransform}
-                onFrontTransformChange={setFrontTransform}
-                onBackTransformChange={setBackTransform}
-                showFront={showFrontPreview}
-                showBack={showBackPreview}
-                previewMode={previewMode}
-                referenceImageSrc={referenceExampleSrc}
-                referenceImageAlt={customized?.alt}
-                disclaimer={
-                  product.customizer?.previewDisclaimer ||
-                  "Rough draft only. Final placement, colour, and sizing may vary slightly."
-                }
-              />
+              {previewMode === "view360" ? (
+                <Product360Preview
+                  slug={product.slug}
+                  productName={product.name}
+                  frontBaseImage={baseImage}
+                  backBaseImage={backBaseImage}
+                  frontArtworkUrls={getArtworkImagePreviewUrls(frontArtworkItems)}
+                  backArtworkUrls={backPreviewUrls}
+                  mockupConfig={mockupConfig}
+                  frontTransform={frontTransform}
+                  backTransform={backTransform}
+                  wrap={printPlan === "print_wrap"}
+                  showFront={showFrontPreview}
+                  showBack={showBackPreview}
+                  disclaimer={
+                    product.customizer?.previewDisclaimer ||
+                    "Approximate preview for your approval. Final print colour, size, and placement may vary slightly."
+                  }
+                />
+              ) : (
+                <ProductDualSideCustomizePreview
+                  productName={product.name}
+                  baseImageSrc={baseImage}
+                  backImageSrc={backBaseImage}
+                  frontArtworkUrls={getArtworkImagePreviewUrls(frontArtworkItems)}
+                  backArtworkUrls={backPreviewUrls}
+                  mockupConfig={mockupConfig}
+                  frontTransform={frontTransform}
+                  backTransform={backTransform}
+                  onFrontTransformChange={setFrontTransform}
+                  onBackTransformChange={setBackTransform}
+                  showFront={showFrontPreview}
+                  showBack={showBackPreview}
+                  previewMode={previewMode}
+                  referenceImageSrc={referenceExampleSrc}
+                  referenceImageAlt={customized?.alt}
+                  disclaimer={
+                    product.customizer?.previewDisclaimer ||
+                    "Rough draft only. Final placement, colour, and sizing may vary slightly."
+                  }
+                />
+              )}
             </div>
             <CustomizePrintPlanPanel
               printPlan={printPlan}
