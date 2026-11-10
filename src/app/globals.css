@@ -502,3 +502,54 @@
     color: #b8bcc8;
   }
 }
+
+/* 3D tilt for product pictures (see components/ui/Tilt3D) */
+.tilt-3d-scene {
+  perspective: 900px;
+}
+
+.tilt-3d {
+  transform: rotateX(var(--tilt-rx, 0deg)) rotateY(var(--tilt-ry, 0deg));
+  transform-style: preserve-3d;
+  transition: transform 0.18s ease-out, box-shadow 0.35s ease;
+  will-change: transform;
+  /* resting depth: soft drop shadow + top-edge highlight */
+  box-shadow:
+    0 14px 28px -12px rgba(0, 0, 0, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    inset 0 -18px 30px -18px rgba(0, 0, 0, 0.45);
+}
+
+.tilt-3d-scene:hover .tilt-3d {
+  box-shadow:
+    0 26px 40px -14px rgba(0, 0, 0, 0.65),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    inset 0 -18px 30px -18px rgba(0, 0, 0, 0.5);
+}
+
+.tilt-3d-glare {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  background: radial-gradient(
+    circle at var(--tilt-gx, 50%) var(--tilt-gy, 50%),
+    rgba(255, 255, 255, 0.3),
+    transparent 55%
+  );
+  transition: opacity 0.3s ease;
+}
+
+.tilt-3d-scene:hover .tilt-3d-glare {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tilt-3d {
+    transform: none !important;
+    transition: none;
+  }
+  .tilt-3d-glare {
+    display: none;
+  }
+}

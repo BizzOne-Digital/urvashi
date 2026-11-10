@@ -56,7 +56,7 @@ export default function AdminLoginPage() {
   return (
     <div className="w-full max-w-md rounded-xl border border-white/10 bg-carbon p-8 shadow-2xl">
       <div className="mb-8 flex justify-center">
-        <Logo href={undefined} variant="default" imageClassName="max-w-[160px] brightness-0 invert" />
+        <Logo href={undefined} variant="default" priority plaqueClassName="rounded-md p-3" />
       </div>
       <h1 className="mb-2 text-center text-2xl font-bold text-pure-paper">Admin Sign In</h1>
       <p className="mb-8 text-center text-sm text-chrome-mid">

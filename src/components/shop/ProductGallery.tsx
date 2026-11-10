@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
+import { Tilt3D } from "@/components/ui/Tilt3D";
 import { cn } from "@/lib/utils";
 
 interface ProductGalleryProps {
@@ -16,7 +17,7 @@ export function ProductGallery({ images, name, className }: ProductGalleryProps)
 
   return (
     <div className={cn("space-y-4", className)}>
-      <div className="relative aspect-square overflow-hidden rounded-sm border border-chrome-light/60 bg-chrome-light/10">
+      <Tilt3D maxTilt={6} className="relative aspect-square overflow-hidden rounded-sm border border-chrome-light/60 bg-chrome-light/10">
         <Image
           src={gallery[active].url}
           alt={gallery[active].alt || name}
@@ -25,7 +26,7 @@ export function ProductGallery({ images, name, className }: ProductGalleryProps)
           sizes="(max-width: 1024px) 100vw, 50vw"
           priority
         />
-      </div>
+      </Tilt3D>
       {gallery.length > 1 && (
         <div className="grid grid-cols-5 gap-2">
           {gallery.map((img, i) => (

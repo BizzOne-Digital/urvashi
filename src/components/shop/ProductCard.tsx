@@ -7,6 +7,7 @@ import { resolveImageSrc } from "@/lib/image-url";
 import { getProductPriceDisplay } from "@/lib/pricing";
 import { isNewProduct, isPromoProduct } from "@/lib/promo";
 import { UploadArtworkPlaceholder } from "@/components/shop/UploadArtworkPlaceholder";
+import { Tilt3D } from "@/components/ui/Tilt3D";
 import { cn } from "@/lib/utils";
 
 interface ProductCardProduct {
@@ -80,7 +81,7 @@ export function ProductCard({ product, className, priority = false }: ProductCar
   return (
     <article className={cn("card-product group flex h-full flex-col", className)} data-reveal-item>
       <Link href={`/shop/${product.slug}`} className="flex flex-1 flex-col">
-        <div className="relative aspect-square overflow-hidden bg-gradient-to-br from-chrome-light/30 via-pure-paper to-chrome-light/20">
+        <Tilt3D className="relative aspect-square overflow-hidden bg-gradient-to-br from-chrome-light/30 via-pure-paper to-chrome-light/20">
           <ProductCardImage
             product={product}
             blank={blank}
@@ -103,7 +104,7 @@ export function ProductCard({ product, className, priority = false }: ProductCar
               Featured
             </span>
           )}
-        </div>
+        </Tilt3D>
 
         <div className="flex flex-1 flex-col p-4">
           {product.categorySlug && (

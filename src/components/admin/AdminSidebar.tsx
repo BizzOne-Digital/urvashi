@@ -65,7 +65,7 @@ export function AdminSidebar({ open, onClose }: AdminSidebarProps) {
         )}
       >
         <div className="flex items-center justify-between border-b border-white/10 px-4 py-4">
-          <Logo href="/admin" variant="header" imageClassName="brightness-0 invert max-w-[120px]" />
+          <Logo href="/admin" variant="header" priority plaqueClassName="rounded-md" />
           <button
             type="button"
             onClick={onClose}
@@ -84,7 +84,7 @@ export function AdminSidebar({ open, onClose }: AdminSidebarProps) {
       {/* Desktop sidebar */}
       <aside className="hidden lg:flex lg:w-64 lg:flex-col lg:fixed lg:inset-y-0 lg:left-0 lg:z-30 bg-ink-black border-r border-white/10">
         <div className="flex items-center border-b border-white/10 px-5 py-5">
-          <Logo href="/admin" variant="header" imageClassName="brightness-0 invert max-w-[120px]" />
+          <Logo href="/admin" variant="header" priority plaqueClassName="rounded-md" />
         </div>
         {nav}
         <div className="mt-auto border-t border-white/10 px-4 py-3 text-xs text-chrome-mid">
