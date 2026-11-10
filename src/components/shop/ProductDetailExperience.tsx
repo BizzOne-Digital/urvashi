@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { Tilt3D } from "@/components/ui/Tilt3D";
 import Link from "next/link";
 import { buttonVariants } from "@/components/ui/Button";
 import { getProductDisplayImages, DESIGN_HELP_SURCHARGE } from "@/lib/product-catalog";
@@ -42,7 +43,8 @@ export function ProductDetailExperience({ product }: ProductDetailExperienceProp
 
   return (
     <div className="grid gap-10 lg:grid-cols-2 lg:gap-12">
-      <div className="relative aspect-square overflow-hidden rounded-xl border border-white/10 bg-[#0a0c14]">
+      <div className="p-2">
+      <Tilt3D maxTilt={9} className="relative aspect-square overflow-hidden rounded-xl border border-white/10 bg-[#0a0c14]">
         {heroImage ? (
           <Image
             src={resolveImageSrc(heroImage.url)}
@@ -55,6 +57,7 @@ export function ProductDetailExperience({ product }: ProductDetailExperienceProp
         ) : (
           <div className="flex h-full items-center justify-center text-chrome-mid">No image</div>
         )}
+      </Tilt3D>
       </div>
 
       <div className="product-detail-panel space-y-5">

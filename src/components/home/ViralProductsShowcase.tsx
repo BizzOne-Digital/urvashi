@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
+import { Tilt3D } from "@/components/ui/Tilt3D";
 import type { HomeViralMediaItem } from "@/lib/home-viral";
 import { getProductDisplayImages } from "@/lib/product-catalog";
 import { resolveImageSrc } from "@/lib/image-url";
@@ -62,7 +63,8 @@ export function ViralProductsShowcase({ products, className }: ViralProductsShow
                 }
                 className="flex flex-1 flex-col text-left"
               >
-                <div className="relative aspect-square overflow-hidden bg-gradient-to-br from-chrome-light/30 via-pure-paper to-chrome-light/20">
+                <div className="px-3 pt-3 pb-2">
+                <Tilt3D className="relative aspect-square overflow-hidden rounded-lg bg-gradient-to-br from-chrome-light/30 via-pure-paper to-chrome-light/20">
                   {sample?.url && (
                     <Image
                       src={resolveImageSrc(sample.url)}
@@ -81,6 +83,7 @@ export function ViralProductsShowcase({ products, className }: ViralProductsShow
                       {mediaCount} photos & videos
                     </span>
                   )}
+                </Tilt3D>
                 </div>
 
                 <div className="flex flex-1 flex-col p-4">

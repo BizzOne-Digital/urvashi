@@ -81,7 +81,8 @@ export function ProductCard({ product, className, priority = false }: ProductCar
   return (
     <article className={cn("card-product group flex h-full flex-col", className)} data-reveal-item>
       <Link href={`/shop/${product.slug}`} className="flex flex-1 flex-col">
-        <Tilt3D className="relative aspect-square overflow-hidden bg-gradient-to-br from-chrome-light/30 via-pure-paper to-chrome-light/20">
+        <div className="px-3 pt-3 pb-2">
+        <Tilt3D className="relative aspect-square overflow-hidden rounded-lg bg-gradient-to-br from-chrome-light/30 via-pure-paper to-chrome-light/20">
           <ProductCardImage
             product={product}
             blank={blank}
@@ -105,6 +106,7 @@ export function ProductCard({ product, className, priority = false }: ProductCar
             </span>
           )}
         </Tilt3D>
+        </div>
 
         <div className="flex flex-1 flex-col p-4">
           {product.categorySlug && (

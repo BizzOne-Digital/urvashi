@@ -503,28 +503,46 @@
   }
 }
 
-/* 3D tilt for product pictures (see components/ui/Tilt3D) */
+/* 3D slab effect for product pictures (see components/ui/Tilt3D) */
 .tilt-3d-scene {
-  perspective: 900px;
+  perspective: 1000px;
 }
 
 .tilt-3d {
-  transform: rotateX(var(--tilt-rx, 0deg)) rotateY(var(--tilt-ry, 0deg));
+  --tilt-ex: 0.9px;
+  --tilt-ey: 1.3px;
+  transform: rotateX(var(--tilt-rx, 0deg)) rotateY(var(--tilt-ry, 0deg)) scale(var(--tilt-s, 1));
   transform-style: preserve-3d;
-  transition: transform 0.18s ease-out, box-shadow 0.35s ease;
+  transition: transform 0.2s ease-out, box-shadow 0.3s ease;
   will-change: transform;
-  /* resting depth: soft drop shadow + top-edge highlight */
+  /* extruded edge (thickness) + soft floor shadow that shifts with the tilt */
   box-shadow:
-    0 14px 28px -12px rgba(0, 0, 0, 0.55),
-    inset 0 1px 0 rgba(255, 255, 255, 0.12),
-    inset 0 -18px 30px -18px rgba(0, 0, 0, 0.45);
+    calc(var(--tilt-ex) * 1) calc(var(--tilt-ey) * 1) 0 #b6bccb,
+    calc(var(--tilt-ex) * 2) calc(var(--tilt-ey) * 2) 0 #a2a9bb,
+    calc(var(--tilt-ex) * 3) calc(var(--tilt-ey) * 3) 0 #8e96aa,
+    calc(var(--tilt-ex) * 4) calc(var(--tilt-ey) * 4) 0 #7a8298,
+    calc(var(--tilt-ex) * 5) calc(var(--tilt-ey) * 5) 0 #666e85,
+    calc(var(--tilt-ex) * 6) calc(var(--tilt-ey) * 6) 0 #535b72,
+    calc(var(--tilt-ex) * 9) calc(var(--tilt-ey) * 9 + 14px) 28px -6px rgba(0, 0, 0, 0.6);
 }
 
 .tilt-3d-scene:hover .tilt-3d {
   box-shadow:
-    0 26px 40px -14px rgba(0, 0, 0, 0.65),
-    inset 0 1px 0 rgba(255, 255, 255, 0.18),
-    inset 0 -18px 30px -18px rgba(0, 0, 0, 0.5);
+    calc(var(--tilt-ex) * 1) calc(var(--tilt-ey) * 1) 0 #b6bccb,
+    calc(var(--tilt-ex) * 2) calc(var(--tilt-ey) * 2) 0 #a2a9bb,
+    calc(var(--tilt-ex) * 3) calc(var(--tilt-ey) * 3) 0 #8e96aa,
+    calc(var(--tilt-ex) * 4) calc(var(--tilt-ey) * 4) 0 #7a8298,
+    calc(var(--tilt-ex) * 5) calc(var(--tilt-ey) * 5) 0 #666e85,
+    calc(var(--tilt-ex) * 6) calc(var(--tilt-ey) * 6) 0 #535b72,
+    calc(var(--tilt-ex) * 12) calc(var(--tilt-ey) * 12 + 26px) 44px -8px rgba(0, 0, 0, 0.75);
+}
+
+/* the picture sits slightly oversized and slides against the cursor (parallax) */
+.tilt-3d-layer {
+  position: absolute;
+  inset: 0;
+  transform: translate3d(var(--tilt-px, 0px), var(--tilt-py, 0px), 0) scale(1.07);
+  transition: transform 0.2s ease-out;
 }
 
 .tilt-3d-glare {
@@ -532,11 +550,9 @@
   inset: 0;
   pointer-events: none;
   opacity: 0;
-  background: radial-gradient(
-    circle at var(--tilt-gx, 50%) var(--tilt-gy, 50%),
-    rgba(255, 255, 255, 0.3),
-    transparent 55%
-  );
+  background:
+    radial-gradient(circle at var(--tilt-gx, 50%) var(--tilt-gy, 50%), rgba(255, 255, 255, 0.34), transparent 55%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.12), transparent 40%, rgba(0, 0, 0, 0.18));
   transition: opacity 0.3s ease;
 }
 
@@ -544,10 +560,34 @@
   opacity: 1;
 }
 
+/* touch screens cannot hover, so the slab slowly sways on its own */
+@media (hover: none) {
+  .tilt-3d {
+    animation: tilt-sway 7s ease-in-out infinite;
+  }
+  .tilt-3d-glare {
+    opacity: 0.5;
+  }
+}
+
+@keyframes tilt-sway {
+  0%,
+  100% {
+    transform: rotateX(4deg) rotateY(-9deg);
+  }
+  50% {
+    transform: rotateX(-4deg) rotateY(9deg);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .tilt-3d {
     transform: none !important;
+    animation: none !important;
     transition: none;
+  }
+  .tilt-3d-layer {
+    transform: none !important;
   }
   .tilt-3d-glare {
     display: none;
