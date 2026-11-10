@@ -4,8 +4,9 @@ import {
   getPublishedServices,
   getPublishedBlogPosts,
 } from "@/lib/public-data";
+import { getSiteUrl } from "@/lib/site-url";
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+const siteUrl = getSiteUrl();
 
 const staticRoutes = [
   "",

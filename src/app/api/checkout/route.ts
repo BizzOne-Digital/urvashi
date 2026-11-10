@@ -1,3 +1,4 @@
+import { getSiteUrl } from "@/lib/site-url";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { v4 as uuidv4 } from "uuid";
@@ -222,7 +223,7 @@ export async function POST(request: NextRequest) {
 
     await mutateCart("clear");
 
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+    const siteUrl = getSiteUrl();
     const orderUrl = `${siteUrl}/order/${orderNumber}?token=${accessToken}`;
 
     const notifyEmail =

@@ -1,3 +1,4 @@
+import { getSiteUrl } from "@/lib/site-url";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { connectDB } from "@/lib/db";
@@ -68,7 +69,7 @@ export async function POST(request: NextRequest) {
     await order.save();
 
     const settings = await getSettings();
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+    const siteUrl = getSiteUrl();
     const orderUrl = `${siteUrl}/order/success?orderNumber=${order.orderNumber}&token=${order.accessToken}`;
     const notifyEmail = process.env.ORDER_NOTIFICATION_EMAIL || settings.contact.email;
 

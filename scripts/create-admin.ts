@@ -21,13 +21,22 @@ async function main() {
 
   await connectDB();
 
+  const reset = process.argv.includes("--reset");
+  const passwordHash = await bcrypt.hash(password, 12);
+
   const existing = await AdminUser.findOne({ email });
   if (existing) {
-    console.log(`Admin user already exists for ${email}. Skipping creation.`);
+    if (!reset) {
+      console.log(`Admin user already exists for ${email}. Skipping (use --reset to change the password).`);
+      process.exit(0);
+    }
+    existing.passwordHash = passwordHash;
+    existing.isActive = true;
+    await existing.save();
+    console.log(`Admin password updated for ${email}.`);
     process.exit(0);
   }
 
-  const passwordHash = await bcrypt.hash(password, 12);
   await AdminUser.create({
     email,
     passwordHash,

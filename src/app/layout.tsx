@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/providers/Providers";
 import { getCachedSettings } from "@/lib/settings";
+import { getSiteUrl } from "@/lib/site-url";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -25,7 +26,7 @@ export async function generateMetadata(): Promise<Metadata> {
     description:
       settings.general?.defaultSeoDescription ||
       "Custom printing on everyday items, meaningful gifts, apparel, drinkware, keepsakes, and more.",
-    metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"),
+    metadataBase: new URL(getSiteUrl()),
     icons: {
       icon: [{ url: "/brand/dpm-logo.png", type: "image/png" }],
       apple: [{ url: "/brand/dpm-logo.png", type: "image/png" }],
