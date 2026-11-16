@@ -55,16 +55,28 @@ function loadImage(src: string): Promise<HTMLImageElement | null> {
   });
 }
 
-function drawCover(ctx: CanvasRenderingContext2D, img: HTMLImageElement, x: number, y: number, w: number, h: number) {
-  const scale = Math.max(w / img.width, h / img.height);
+/**
+ * Draws the whole picture inside the box without cropping it (scaled to fit and centred), or
+ * stretched to the box when the customer chose "stretch to fit". The preview must never hide part
+ * of the artwork the customer uploaded.
+ */
+function drawWhole(
+  ctx: CanvasRenderingContext2D,
+  img: HTMLImageElement,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  stretch = false
+) {
+  if (stretch) {
+    ctx.drawImage(img, x, y, w, h);
+    return;
+  }
+  const scale = Math.min(w / img.width, h / img.height);
   const dw = img.width * scale;
   const dh = img.height * scale;
-  ctx.save();
-  ctx.beginPath();
-  ctx.rect(x, y, w, h);
-  ctx.clip();
   ctx.drawImage(img, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh);
-  ctx.restore();
 }
 
 /** Same placement rules as the 2D estimate: the transform box is a % of the print panel. */
@@ -83,20 +95,21 @@ function drawArtwork(
     const box = artworkTransformToBox(transform);
     const bw = (zone.w * box.w) / 100;
     const bh = (zone.h * box.h) / 100;
-    drawCover(
+    drawWhole(
       ctx,
       images[0],
       zone.x + (zone.w * box.cx) / 100 - bw / 2,
       zone.y + (zone.h * box.cy) / 100 - bh / 2,
       bw,
-      bh
+      bh,
+      transform.fit === "fill"
     );
   } else if (images.length > 1) {
     const { cols, rows } = getCollageGridLayout(images.length);
     const cw = zone.w / cols;
     const ch = zone.h / rows;
     images.slice(0, cols * rows).forEach((img, i) => {
-      drawCover(ctx, img, zone.x + (i % cols) * cw, zone.y + Math.floor(i / cols) * ch, cw, ch);
+      drawWhole(ctx, img, zone.x + (i % cols) * cw, zone.y + Math.floor(i / cols) * ch, cw, ch);
     });
   }
 

@@ -42,7 +42,12 @@ export function AddressAutocomplete({
   }, []);
 
   const applySelection = useCallback(
-    (address: AddressSelection) => {
+    (selected: AddressSelection) => {
+      // Map data (OpenStreetMap) often has wrong or approximate postal codes, which would silently
+      // give the wrong shipping rate and tax. Only Canada Post verified codes are filled in.
+      const address: AddressSelection = selected.postalCodeVerified
+        ? selected
+        : { ...selected, postalCode: undefined, postalCodeSuggestion: selected.postalCode };
       onChange(address.address1);
       onAddressSelect(address);
       setOpen(false);
@@ -255,7 +260,7 @@ export function AddressAutocomplete({
       {dropdown}
 
       <p className="mt-1 text-xs text-chrome-mid">
-        Start typing your street address — pick a suggestion, then verify the postal code (you can edit it if needed).
+        Start typing your street address and pick a suggestion, then enter your postal code. Shipping and tax depend on it.
       </p>
     </div>
   );

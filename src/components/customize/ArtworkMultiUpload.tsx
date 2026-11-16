@@ -157,6 +157,55 @@ export function ArtworkMultiUpload({
         )}
       </div>
 
+      {items.length > 0 && hidePreviews && (
+        <ul className="space-y-2">
+          {items.map((item) => (
+            <li
+              key={item.key}
+              className="flex items-center gap-3 rounded-lg border border-white/10 bg-[#0a0c14] p-2"
+            >
+              {item.file.type.startsWith("image/") ? (
+                /* eslint-disable-next-line @next/next/no-img-element */
+                <img
+                  src={item.previewUrl}
+                  alt=""
+                  className="h-12 w-12 shrink-0 rounded bg-white object-contain"
+                />
+              ) : (
+                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded bg-white/10 text-[10px] text-chrome-light">
+                  FILE
+                </span>
+              )}
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm text-pure-paper">{item.file.name}</p>
+                {item.uploading && <p className="text-xs text-cyan">Uploading…</p>}
+                {item.artworkId && <p className="text-xs text-green-400">Uploaded</p>}
+                {!item.uploading && !item.artworkId && !item.error && (
+                  <p className="text-xs text-chrome-mid">Selected — uploads when you place your order</p>
+                )}
+                {item.error && (
+                  <button
+                    type="button"
+                    onClick={() => retryUpload(item.key)}
+                    className="text-xs text-deep-magenta underline"
+                  >
+                    Upload failed — retry
+                  </button>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => removeItem(item.key)}
+                className="shrink-0 rounded border border-white/15 px-2 py-1 text-xs text-chrome-light hover:border-deep-magenta hover:text-deep-magenta"
+                aria-label={`Remove ${item.file.name}`}
+              >
+                Remove
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+
       {items.length > 0 && !hidePreviews && (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           {items.map((item) => (

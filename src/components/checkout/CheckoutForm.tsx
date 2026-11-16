@@ -12,7 +12,13 @@ import { AddressAutocomplete } from "@/components/checkout/AddressAutocomplete";
 import { MonerisCheckout } from "@/components/payments/MonerisCheckout";
 import { formatCurrency } from "@/lib/utils";
 import type { CalculatedLineItem } from "@/lib/pricing";
-import { CANADIAN_PROVINCES, normalizeProvinceCode, provinceFromPostalCode } from "@/lib/canadian-tax";
+import {
+  CANADIAN_PROVINCES,
+  normalizeProvinceCode,
+  postalMatchesProvince,
+  postalMismatchMessage,
+  provinceFromPostalCode,
+} from "@/lib/canadian-tax";
 import { formatCanadianPostalCode, isValidCanadianPostalCode } from "@/lib/canadian-postal";
 
 type MonerisEnvironment = "qa" | "prod";
@@ -84,6 +90,8 @@ export function CheckoutForm({
     currency: string;
   } | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  // Unverified postal code from map data: shown as a hint, never filled in automatically.
+  const [postalSuggestion, setPostalSuggestion] = useState<string | null>(null);
   const [ratesLoading, setRatesLoading] = useState(false);
   const [ratesError, setRatesError] = useState<string | null>(null);
   const [rateSummary, setRateSummary] = useState<RateSummary | null>(null);
@@ -105,6 +113,8 @@ export function CheckoutForm({
   const postalCode = watch("postalCode") || "";
   const province = watch("province") || "";
   const shippingMethod = watch("shippingMethod") || "";
+  const postalMismatch =
+    formatCanadianPostalCode(postalCode) !== null && !postalMatchesProvince(postalCode, province);
 
   useEffect(() => {
     fetch("/api/cart")
@@ -174,6 +184,10 @@ export function CheckoutForm({
   }, [postalCode, province, fetchRates, shippingMethod]);
 
   const onSubmit = async (data: CheckoutFormData) => {
+    if (!postalMatchesProvince(data.postalCode, data.province)) {
+      toast.error(postalMismatchMessage(data.postalCode, data.province));
+      return;
+    }
     setSubmitting(true);
     try {
       const res = await fetch("/api/checkout", {
@@ -317,8 +331,9 @@ export function CheckoutForm({
                 setValue("postalCode", postal, { shouldValidate: true });
                 const inferred = provinceFromPostalCode(postal);
                 if (inferred) setValue("province", inferred, { shouldValidate: true });
-              } else if (addr.postalCode) {
-                setValue("postalCode", addr.postalCode, { shouldValidate: true });
+              } else {
+                setValue("postalCode", "");
+                setPostalSuggestion(formatCanadianPostalCode(addr.postalCodeSuggestion || ""));
               }
               if (addr.province) {
                 const code = normalizeProvinceCode(addr.province);
@@ -368,6 +383,26 @@ export function CheckoutForm({
             />
             {errors.postalCode && (
               <p className="mt-1 text-xs text-deep-magenta">{errors.postalCode.message}</p>
+            )}
+            {postalSuggestion && formatCanadianPostalCode(postalCode) !== postalSuggestion && (
+              <p className="mt-1 text-xs text-amber-200">
+                Map data suggests {postalSuggestion} for this address (not verified).{" "}
+                <button
+                  type="button"
+                  className="underline hover:text-pure-paper"
+                  onClick={() => {
+                    setValue("postalCode", postalSuggestion, { shouldValidate: true });
+                    const inferred = provinceFromPostalCode(postalSuggestion);
+                    if (inferred) setValue("province", inferred, { shouldValidate: true });
+                  }}
+                >
+                  Use it
+                </button>
+                . Please check it against your mail.
+              </p>
+            )}
+            {postalMismatch && (
+              <p className="mt-1 text-xs text-deep-magenta">{postalMismatchMessage(postalCode, province)}</p>
             )}
           </div>
         </div>

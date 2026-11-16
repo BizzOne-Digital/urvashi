@@ -299,7 +299,9 @@ export function ProductMockupPreview({
                     draggable={false}
                     className={cn(
                       "h-full w-full",
-                      isEstimate ? "bg-transparent object-cover" : "bg-white",
+                      isEstimate
+                        ? cn("bg-transparent", artworkTransform.fit === "fill" ? "object-fill" : "object-contain")
+                        : "bg-white",
                       !isEstimate && FIT_CLASS[artworkTransform.fit],
                       isEstimate && estimateArtworkBlend === "multiply" && "opacity-[0.92]",
                       canAdjust && "cursor-grab active:cursor-grabbing"

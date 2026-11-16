@@ -367,7 +367,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("Checkout POST error:", error);
     const message =
-      error instanceof Error && error.message.includes("shipping")
+      error instanceof Error && (error.message.includes("shipping") || error.message.startsWith("Postal code"))
         ? error.message
         : "Failed to process checkout";
     return NextResponse.json({ error: message }, { status: 500 });

@@ -126,6 +126,17 @@ async function searchNominatim(query: string): Promise<AddressSuggestion[]> {
     .map((item) => ({ ...item, source: "openstreetmap" as const }));
 }
 
+const POSTAL_IN_TEXT = /,?\s*\b[A-Z]\d[A-Z][ -]?\d[A-Z]\d\b/gi;
+
+/**
+ * Map data (OpenStreetMap) postal codes are often wrong or approximate, so they are not shown in the
+ * list or filled into the form. Only Canada Post AddressComplete results are trusted.
+ */
+function hideUnverifiedPostal(item: AddressSuggestion): AddressSuggestion {
+  if (item.source !== "openstreetmap") return item;
+  return { ...item, label: item.label.replace(POSTAL_IN_TEXT, "") };
+}
+
 function mergeSuggestions(...groups: AddressSuggestion[][]): AddressSuggestion[] {
   const seen = new Set<string>();
   const merged: AddressSuggestion[] = [];
@@ -173,7 +184,9 @@ export async function GET(request: NextRequest) {
         : Promise.resolve([]),
     ]);
 
-    const merged = mergeSuggestions(structuredResults, photonResults, nominatimResults);
+    const merged = mergeSuggestions(structuredResults, photonResults, nominatimResults).map(
+      hideUnverifiedPostal
+    );
     return NextResponse.json(merged.slice(0, 8));
   } catch (error) {
     console.error("Address search error:", error);

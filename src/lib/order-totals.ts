@@ -6,7 +6,7 @@ import {
   type ShippingMethodId,
   SHIPPING_METHODS,
 } from "@/lib/canada-post";
-import { calculateCanadianTax } from "@/lib/canadian-tax";
+import { calculateCanadianTax, postalMatchesProvince, postalMismatchMessage } from "@/lib/canadian-tax";
 import { calculateParcelFromCart } from "@/lib/shipping-parcel";
 import type { CalculatedLineItem } from "@/lib/pricing";
 import type { IProduct } from "@/models/Product";
@@ -73,6 +73,10 @@ export async function calculateOrderTotals(input: OrderTotalsInput): Promise<Ord
   const { subtotal, currency, items, productMap, settings, shipping } = input;
   const pickupEnabled = settings.commerce?.pickupEnabled ?? false;
   const methodId = shipping?.method as ShippingMethodId | undefined;
+
+  if (methodId !== "pickup" && shipping?.postalCode && !postalMatchesProvince(shipping.postalCode, shipping.province)) {
+    throw new Error(postalMismatchMessage(shipping.postalCode, shipping.province));
+  }
 
   let shippingCost = 0;
   let shippingMethodLabel: string | undefined;

@@ -72,7 +72,7 @@ export function CustomizePrintPlanPanel({
               type="button"
               onClick={() => onPrintPlanChange(plan.id)}
               className={cn(
-                "rounded-md border px-3 py-3 text-left text-sm transition-colors",
+                "min-w-0 break-words rounded-md border px-3 py-3 text-left text-sm transition-colors",
                 selected
                   ? "border-cyan bg-cyan/10 text-pure-paper ring-1 ring-cyan/50"
                   : "border-white/15 bg-white/[0.03] text-chrome-light hover:border-cyan/40"

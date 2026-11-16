@@ -104,6 +104,45 @@ export function provinceFromPostalCode(postal?: string): string | null {
   return regionMap[normalized[0]] || null;
 }
 
+/** Provinces/territories each postal-code first letter can belong to (X is shared by NT and NU). */
+const PROVINCES_BY_POSTAL_LETTER: Record<string, string[]> = {
+  A: ["NL"],
+  B: ["NS"],
+  C: ["PE"],
+  E: ["NB"],
+  G: ["QC"],
+  H: ["QC"],
+  J: ["QC"],
+  K: ["ON"],
+  L: ["ON"],
+  M: ["ON"],
+  N: ["ON"],
+  P: ["ON"],
+  R: ["MB"],
+  S: ["SK"],
+  T: ["AB"],
+  V: ["BC"],
+  X: ["NT", "NU"],
+  Y: ["YT"],
+};
+
+/** False only when both are known and the postal code cannot be in that province. */
+export function postalMatchesProvince(postal?: string, province?: string): boolean {
+  const letter = (postal || "").replace(/\s+/g, "").toUpperCase()[0];
+  const code = normalizeProvinceCode(province);
+  if (!letter || !code) return true;
+  const allowed = PROVINCES_BY_POSTAL_LETTER[letter];
+  return !allowed || allowed.includes(code);
+}
+
+export function postalMismatchMessage(postal: string, province?: string): string {
+  const expected = provinceFromPostalCode(postal);
+  const name = CANADIAN_PROVINCES.find((p) => p.code === expected)?.name;
+  return name
+    ? `Postal code ${postal} is in ${name}, but the province is set to ${province}. Please check both.`
+    : "The postal code does not match the selected province. Please check both.";
+}
+
 export function normalizeProvinceCode(province?: string): string | null {
   if (!province?.trim()) return null;
   const key = province.trim().toLowerCase();

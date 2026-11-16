@@ -8,6 +8,7 @@ import { getOriginPostalCode, getShippingRates, isCanadaPostApiEnabled } from "@
 import { formatCanadianPostalCode } from "@/lib/canadian-postal";
 import { calculateParcelFromCart } from "@/lib/shipping-parcel";
 import { calculateOrderTax } from "@/lib/order-totals";
+import { postalMatchesProvince, postalMismatchMessage } from "@/lib/canadian-tax";
 
 const schema = z.object({
   postalCode: z.string().min(6).max(20),
@@ -43,6 +44,13 @@ export async function POST(request: NextRequest) {
     if (!formattedPostal) {
       return NextResponse.json(
         { error: "Enter a valid Canadian postal code (for example A1A 1A1)." },
+        { status: 400 }
+      );
+    }
+
+    if (!postalMatchesProvince(formattedPostal, parsed.data.province)) {
+      return NextResponse.json(
+        { error: postalMismatchMessage(formattedPostal, parsed.data.province) },
         { status: 400 }
       );
     }

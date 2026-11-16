@@ -63,7 +63,7 @@ function MockupFace({
                 src={urls[0]}
                 alt="Your artwork"
                 draggable={false}
-                className="h-full w-full object-cover"
+                className={cn("h-full w-full", transform.fit === "fill" ? "object-fill" : "object-contain")}
                 style={blend === "multiply" ? { mixBlendMode: "multiply", opacity: 0.92 } : undefined}
               />
             </div>
@@ -77,7 +77,7 @@ function MockupFace({
             >
               {urls.slice(0, cols * rows).map((url, i) => (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img key={`${url}-${i}`} src={url} alt="" className="h-full w-full object-cover" />
+                <img key={`${url}-${i}`} src={url} alt="" className="h-full w-full object-contain" />
               ))}
             </div>
           )}

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { postalMatchesProvince, postalMismatchMessage } from "@/lib/canadian-tax";
 import { z } from "zod";
 import { calculateCustomizeTotals } from "@/lib/customize-totals";
 import { getShippingRates, getOriginPostalCode, isCanadaPostApiEnabled } from "@/lib/canada-post";
@@ -52,6 +53,13 @@ export async function POST(request: NextRequest) {
     if (!formattedPostal) {
       return NextResponse.json(
         { error: "Enter a valid Canadian postal code (for example A1A 1A1)." },
+        { status: 400 }
+      );
+    }
+
+    if (!postalMatchesProvince(formattedPostal, parsed.data.province)) {
+      return NextResponse.json(
+        { error: postalMismatchMessage(formattedPostal, parsed.data.province) },
         { status: 400 }
       );
     }

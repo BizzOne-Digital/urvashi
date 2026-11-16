@@ -9,16 +9,20 @@ export interface ArtworkTransform {
   fit: ArtworkFitMode;
 }
 
+/**
+ * Starting placement: the whole picture is shown (scaled to fit the print area), never cropped.
+ * Customers can still choose "Fill print area" (crops to fill) or stretch it themselves.
+ */
 export const DEFAULT_ARTWORK_TRANSFORM: ArtworkTransform = {
   scale: 100,
   scaleX: 100,
   scaleY: 100,
   offsetX: 0,
   offsetY: 0,
-  fit: "cover",
+  fit: "contain",
 };
 
-/** Good starting point so uploads cover the print area immediately. */
+/** "Fill print area" button: covers the whole print area and crops the picture to do it. */
 export const FILL_PRINT_AREA_TRANSFORM: ArtworkTransform = {
   scale: 100,
   scaleX: 100,

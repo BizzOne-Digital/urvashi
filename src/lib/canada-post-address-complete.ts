@@ -76,6 +76,7 @@ function parseRetrieveRow(row: Record<string, string>): AddressSelection {
     province,
     postalCode,
     country: "Canada",
+    postalCodeVerified: true,
   };
 }
 

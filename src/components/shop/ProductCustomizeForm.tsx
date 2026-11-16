@@ -8,7 +8,13 @@ import { Button, buttonVariants } from "@/components/ui/Button";
 import { Container } from "@/components/ui/Container";
 import { AddressAutocomplete } from "@/components/checkout/AddressAutocomplete";
 import { MonerisCheckout } from "@/components/payments/MonerisCheckout";
-import { CANADIAN_PROVINCES, normalizeProvinceCode, provinceFromPostalCode } from "@/lib/canadian-tax";
+import {
+  CANADIAN_PROVINCES,
+  normalizeProvinceCode,
+  postalMatchesProvince,
+  postalMismatchMessage,
+  provinceFromPostalCode,
+} from "@/lib/canadian-tax";
 import { formatCanadianPostalCode } from "@/lib/canadian-postal";
 import {
   getArtworkImagePreviewUrls,
@@ -42,7 +48,7 @@ import {
 } from "@/lib/product-print-pricing";
 import { getProductCustomizePrintRules } from "@/lib/customize-product-print-plans";
 import {
-  FILL_PRINT_AREA_TRANSFORM,
+  DEFAULT_ARTWORK_TRANSFORM,
   formatArtworkTransformNote,
   type ArtworkTransform,
 } from "@/lib/artwork-transform";
@@ -202,8 +208,8 @@ export function ProductCustomizeForm({ product, monerisMode = "qa" }: ProductCus
 
   const [frontArtworkItems, setFrontArtworkItems] = useState<LocalArtworkFile[]>([]);
   const [backArtworkItems, setBackArtworkItems] = useState<LocalArtworkFile[]>([]);
-  const [frontTransform, setFrontTransform] = useState<ArtworkTransform>(FILL_PRINT_AREA_TRANSFORM);
-  const [backTransform, setBackTransform] = useState<ArtworkTransform>(FILL_PRINT_AREA_TRANSFORM);
+  const [frontTransform, setFrontTransform] = useState<ArtworkTransform>(DEFAULT_ARTWORK_TRANSFORM);
+  const [backTransform, setBackTransform] = useState<ArtworkTransform>(DEFAULT_ARTWORK_TRANSFORM);
   const [calendarSlots, setCalendarSlots] = useState(createEmptyCalendarSlots);
   const [previewMonth, setPreviewMonth] = useState(0);
   const [uploading, setUploading] = useState(false);
@@ -212,6 +218,8 @@ export function ProductCustomizeForm({ product, monerisMode = "qa" }: ProductCus
     defaultPrintPlanForProduct(product.printLocations, product.slug)
   );
   const [savedDesigns, setSavedDesigns] = useState<SavedCustomizeDesignDraft[]>([]);
+  // Unverified postal code from map data: shown as a hint, never filled in automatically.
+  const [postalSuggestion, setPostalSuggestion] = useState<string | null>(null);
   const [previewMode, setPreviewMode] = useState<"edit" | "estimate" | "view360">("edit");
   const [designHelp, setDesignHelp] = useState(false);
   const [pendingPayment, setPendingPayment] = useState<PendingMonerisPayment | null>(null);
@@ -295,8 +303,8 @@ export function ProductCustomizeForm({ product, monerisMode = "qa" }: ProductCus
   const resetDesignWorkspace = useCallback(() => {
     setFrontArtworkItems([]);
     setBackArtworkItems([]);
-    setFrontTransform(FILL_PRINT_AREA_TRANSFORM);
-    setBackTransform(FILL_PRINT_AREA_TRANSFORM);
+    setFrontTransform(DEFAULT_ARTWORK_TRANSFORM);
+    setBackTransform(DEFAULT_ARTWORK_TRANSFORM);
     setPrintPlan(defaultPrintPlanForProduct(product.printLocations, product.slug));
   }, [product.printLocations, product.slug]);
 
@@ -404,13 +412,13 @@ export function ProductCustomizeForm({ product, monerisMode = "qa" }: ProductCus
 
   useEffect(() => {
     if (frontArtworkItems.length > 0) {
-      setFrontTransform(FILL_PRINT_AREA_TRANSFORM);
+      setFrontTransform(DEFAULT_ARTWORK_TRANSFORM);
     }
   }, [frontArtworkItemKeys, frontArtworkItems.length]);
 
   useEffect(() => {
     if (backArtworkItems.length > 0) {
-      setBackTransform(FILL_PRINT_AREA_TRANSFORM);
+      setBackTransform(DEFAULT_ARTWORK_TRANSFORM);
     }
   }, [backArtworkItemKeys, backArtworkItems.length]);
 
@@ -510,6 +518,10 @@ export function ProductCustomizeForm({ product, monerisMode = "qa" }: ProductCus
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!postalMatchesProvince(form.postalCode, form.province)) {
+      toast.error(postalMismatchMessage(form.postalCode, form.province));
+      return;
+    }
     if (isCalendar) {
       const filledMonths = getCalendarArtworkItems(calendarSlots);
       if (filledMonths.length < CALENDAR_MONTH_COUNT) {
@@ -1034,8 +1046,14 @@ export function ProductCustomizeForm({ product, monerisMode = "qa" }: ProductCus
               cityHint={form.city}
               onChange={(value) => setForm((prev) => ({ ...prev, address1: value }))}
               onAddressSelect={(addr) => {
+                const verifiedPostal = formatCanadianPostalCode(addr.postalCode || "");
+                setPostalSuggestion(
+                  verifiedPostal ? null : formatCanadianPostalCode(addr.postalCodeSuggestion || "")
+                );
                 setForm((prev) => {
-                  const postal = formatCanadianPostalCode(addr.postalCode || "") || addr.postalCode || prev.postalCode;
+                  // Map-data postal codes are not trusted: clear the old one instead of keeping a
+                  // code that belongs to the previous address.
+                  const postal = verifiedPostal || "";
                   const provinceFromPostal = postal ? provinceFromPostalCode(postal) : null;
                   const provinceCode = addr.province
                     ? normalizeProvinceCode(addr.province) || prev.province
@@ -1087,6 +1105,31 @@ export function ProductCustomizeForm({ product, monerisMode = "qa" }: ProductCus
                   }
                 }}
               />
+              {postalSuggestion && formatCanadianPostalCode(form.postalCode) !== postalSuggestion && (
+                <p className="mt-1 text-xs text-amber-200">
+                  Map data suggests {postalSuggestion} for this address (not verified).{" "}
+                  <button
+                    type="button"
+                    className="underline hover:text-pure-paper"
+                    onClick={() =>
+                      setForm((prev) => ({
+                        ...prev,
+                        postalCode: postalSuggestion,
+                        province: provinceFromPostalCode(postalSuggestion) || prev.province,
+                      }))
+                    }
+                  >
+                    Use it
+                  </button>
+                  . Please check it against your mail.
+                </p>
+              )}
+              {formatCanadianPostalCode(form.postalCode) !== null &&
+                !postalMatchesProvince(form.postalCode, form.province) && (
+                  <p className="mt-1 text-xs text-red-300">
+                    {postalMismatchMessage(form.postalCode, form.province)}
+                  </p>
+                )}
             </div>
           </div>
 

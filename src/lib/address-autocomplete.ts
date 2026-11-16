@@ -7,6 +7,10 @@ export interface AddressSelection {
   province?: string;
   postalCode?: string;
   country?: string;
+  /** True only when the postal code came from Canada Post AddressComplete (official data). */
+  postalCodeVerified?: boolean;
+  /** Unverified postal code from map data. Never filled in automatically; shown as a hint. */
+  postalCodeSuggestion?: string;
 }
 
 export interface AddressSuggestion {

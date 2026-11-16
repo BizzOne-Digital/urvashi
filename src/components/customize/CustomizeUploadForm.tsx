@@ -19,7 +19,7 @@ import {
 } from "@/components/customize/ArtworkMultiUpload";
 import { ProductMockupPreview } from "@/components/customize/ProductMockupPreview";
 import {
-  FILL_PRINT_AREA_TRANSFORM,
+  DEFAULT_ARTWORK_TRANSFORM,
   formatArtworkTransformNote,
   type ArtworkTransform,
 } from "@/lib/artwork-transform";
@@ -85,7 +85,7 @@ export function CustomizeUploadForm({
   const [submitting, setSubmitting] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [artworkItems, setArtworkItems] = useState<LocalArtworkFile[]>([]);
-  const [artworkTransform, setArtworkTransform] = useState<ArtworkTransform>(FILL_PRINT_AREA_TRANSFORM);
+  const [artworkTransform, setArtworkTransform] = useState<ArtworkTransform>(DEFAULT_ARTWORK_TRANSFORM);
   const [selectedProductId, setSelectedProductId] = useState(previewProducts[0]?._id || "");
   const [pendingPayment, setPendingPayment] = useState<PendingMonerisPayment | null>(null);
 
@@ -123,7 +123,7 @@ export function CustomizeUploadForm({
 
   useEffect(() => {
     if (artworkItems.length > 0) {
-      setArtworkTransform(FILL_PRINT_AREA_TRANSFORM);
+      setArtworkTransform(DEFAULT_ARTWORK_TRANSFORM);
     }
   }, [artworkItemKeys, artworkItems.length, selectedProductId]);
 
