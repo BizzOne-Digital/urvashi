@@ -23,7 +23,8 @@ export const CUSTOMIZE_PRINT_PLANS: CustomizePrintPlanOption[] = [
   { id: "print_front", label: "Print Front", surcharge: 0 },
   { id: "print_back", label: "Print Back", surcharge: 0 },
   { id: "print_front_and_back", label: "Print Front and Back", surcharge: 5 },
-  { id: "print_wrap", label: "Print from Front to Back", surcharge: 2 },
+  // Full wrap covers the whole product, so it costs more than separate front + back prints.
+  { id: "print_wrap", label: "Print from Front to Back", surcharge: 8 },
 ];
 
 /** Shown in the print-option grid (no blank tile). */
