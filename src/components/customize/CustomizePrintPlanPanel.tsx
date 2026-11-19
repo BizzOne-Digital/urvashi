@@ -144,7 +144,7 @@ export function CustomizePrintPlanPanel({
             Sublimation printing
           </div>
           <div className="rounded-md border border-white/10 bg-white/[0.02] px-3 py-2 text-center text-xs text-chrome-mid">
-            UV / other — note in instructions
+            DTF transfer, UV or other — note in instructions
           </div>
         </div>
       </div>

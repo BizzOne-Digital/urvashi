@@ -32,7 +32,7 @@ const HERO_SLIDES = [
 
 const FEATURES = [
   { label: "Quality", desc: "Vivid CMYK saturation" },
-  { label: "Versatility", desc: "Sublimation & UV printing" },
+  { label: "Versatility", desc: "Sublimation, UV & DTF printing" },
   { label: "Innovation", desc: "Pro ink refills & media" },
 ] as const;
 
@@ -129,14 +129,14 @@ export function HomeHero({ tagline = "Your idea. Your style. Printed with purpos
                 data-hero-line
                 className="block bg-gradient-to-r from-cyan via-[#4d9fff] to-magenta bg-clip-text text-transparent animate-gradient-shift"
               >
-                Sublimation, UV & Ink
+                Sublimation, UV, DTF & Ink
               </span>
               <span data-hero-line className="block text-pure-paper">Supplies</span>
             </h1>
 
             <p data-hero-line className="mt-6 max-w-xl text-base leading-relaxed text-chrome-light sm:text-lg">
-              Custom streetwear apparel, mugs, tumblers, keychains, ornaments, sublimation and UV printing, and
-              high-density CMYK inks — personalized for gifts, business, and everyday life.
+              Custom streetwear apparel, mugs, tumblers, keychains, ornaments, sublimation, UV and DTF printing,
+              DTF transfers, and high-density CMYK inks — personalized for gifts, business, and everyday life.
             </p>
             <p data-hero-line className="mt-2 text-sm text-cyan/80">{tagline}</p>
 
@@ -187,7 +187,7 @@ export function HomeHero({ tagline = "Your idea. Your style. Printed with purpos
                   ✦
                 </span>
                 <div>
-                  <p className="text-xs font-bold uppercase tracking-wider text-cyan">Sublimation, UV & inks</p>
+                  <p className="text-xs font-bold uppercase tracking-wider text-cyan">Sublimation, UV, DTF & inks</p>
                   <p className="text-sm font-semibold text-pure-paper">CMYK high density</p>
                 </div>
               </div>
