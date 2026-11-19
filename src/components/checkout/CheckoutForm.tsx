@@ -90,8 +90,6 @@ export function CheckoutForm({
     currency: string;
   } | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  // Unverified postal code from map data: shown as a hint, never filled in automatically.
-  const [postalSuggestion, setPostalSuggestion] = useState<string | null>(null);
   const [ratesLoading, setRatesLoading] = useState(false);
   const [ratesError, setRatesError] = useState<string | null>(null);
   const [rateSummary, setRateSummary] = useState<RateSummary | null>(null);
@@ -332,8 +330,8 @@ export function CheckoutForm({
                 const inferred = provinceFromPostalCode(postal);
                 if (inferred) setValue("province", inferred, { shouldValidate: true });
               } else {
+                // Map data postal codes are unreliable, so the customer enters their own.
                 setValue("postalCode", "");
-                setPostalSuggestion(formatCanadianPostalCode(addr.postalCodeSuggestion || ""));
               }
               if (addr.province) {
                 const code = normalizeProvinceCode(addr.province);
@@ -384,23 +382,18 @@ export function CheckoutForm({
             {errors.postalCode && (
               <p className="mt-1 text-xs text-deep-magenta">{errors.postalCode.message}</p>
             )}
-            {postalSuggestion && formatCanadianPostalCode(postalCode) !== postalSuggestion && (
-              <p className="mt-1 text-xs text-amber-200">
-                Map data suggests {postalSuggestion} for this address (not verified).{" "}
-                <button
-                  type="button"
+            <p className="mt-1 text-xs text-chrome-mid">
+              Not sure of your postal code?{" "}
+                <a
+                  href="https://www.canadapost-postescanada.ca/cpc/en/tools/find-a-postal-code.page"
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="underline hover:text-pure-paper"
-                  onClick={() => {
-                    setValue("postalCode", postalSuggestion, { shouldValidate: true });
-                    const inferred = provinceFromPostalCode(postalSuggestion);
-                    if (inferred) setValue("province", inferred, { shouldValidate: true });
-                  }}
                 >
-                  Use it
-                </button>
-                . Please check it against your mail.
-              </p>
-            )}
+                  Look it up on Canada Post
+                </a>
+                .
+            </p>
             {postalMismatch && (
               <p className="mt-1 text-xs text-deep-magenta">{postalMismatchMessage(postalCode, province)}</p>
             )}

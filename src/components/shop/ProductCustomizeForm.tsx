@@ -33,6 +33,7 @@ import { CalendarMockupPreview } from "@/components/customize/CalendarMockupPrev
 import { ProductDualSideCustomizePreview } from "@/components/customize/ProductDualSideCustomizePreview";
 import { CustomizePrintPlanPanel } from "@/components/customize/CustomizePrintPlanPanel";
 import { Product360Preview } from "@/components/customize/Product360Preview";
+import { QuantityPicker, SizeQuantityGrid } from "@/components/customize/QuantityPicker";
 import {
   type CustomizePrintPlanId,
   printPlanRequiresBackArtwork,
@@ -149,6 +150,15 @@ export function ProductCustomizeForm({ product, monerisMode = "qa" }: ProductCus
     () => optionChoices[0]?.value ?? ""
   );
   const [selectedSize, setSelectedSize] = useState(() => sizeChoices[0]?.value ?? "");
+  // Products with several sizes take a quantity per size, so one order can mix sizes.
+  const useSizeGrid = !isCalendarProduct(product.slug) && sizeChoices.length > 1;
+  const [sizeQuantities, setSizeQuantities] = useState<Record<string, number>>(() =>
+    Object.fromEntries(sizeChoices.map((o, i) => [o.value, i === 0 ? product.minQuantity || 1 : 0]))
+  );
+  const sizeTotal = useMemo(
+    () => sizeChoices.reduce((sum, o) => sum + (sizeQuantities[o.value] || 0), 0),
+    [sizeChoices, sizeQuantities]
+  );
 
   useEffect(() => {
     if (!optionChoices.length) {
@@ -218,8 +228,6 @@ export function ProductCustomizeForm({ product, monerisMode = "qa" }: ProductCus
     defaultPrintPlanForProduct(product.printLocations, product.slug)
   );
   const [savedDesigns, setSavedDesigns] = useState<SavedCustomizeDesignDraft[]>([]);
-  // Unverified postal code from map data: shown as a hint, never filled in automatically.
-  const [postalSuggestion, setPostalSuggestion] = useState<string | null>(null);
   const [previewMode, setPreviewMode] = useState<"edit" | "estimate" | "view360">("edit");
   const [designHelp, setDesignHelp] = useState(false);
   const [pendingPayment, setPendingPayment] = useState<PendingMonerisPayment | null>(null);
@@ -240,6 +248,12 @@ export function ProductCustomizeForm({ product, monerisMode = "qa" }: ProductCus
     instructions: "",
     rightsConfirmed: false,
   });
+
+  useEffect(() => {
+    if (useSizeGrid) {
+      setForm((prev) => (prev.quantity === sizeTotal ? prev : { ...prev, quantity: sizeTotal }));
+    }
+  }, [useSizeGrid, sizeTotal]);
 
   const printSurcharge = useMemo(
     () =>
@@ -518,6 +532,12 @@ export function ProductCustomizeForm({ product, monerisMode = "qa" }: ProductCus
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (useSizeGrid && sizeTotal < (product.minQuantity || 1)) {
+      toast.error(
+        sizeTotal === 0 ? "Please choose how many of each size you need." : `Minimum order is ${product.minQuantity}.`
+      );
+      return;
+    }
     if (!postalMatchesProvince(form.postalCode, form.province)) {
       toast.error(postalMismatchMessage(form.postalCode, form.province));
       return;
@@ -614,7 +634,14 @@ export function ProductCustomizeForm({ product, monerisMode = "qa" }: ProductCus
         selectedOptionLabel && optionVariant
           ? `${optionVariant.name}: ${selectedOptionLabel}`
           : undefined,
-        selectedSizeLabel && sizeVariant ? `${sizeVariant.name}: ${selectedSizeLabel}` : undefined,
+        useSizeGrid && sizeVariant
+          ? `${sizeVariant.name}: ${sizeChoices
+              .filter((o) => (sizeQuantities[o.value] || 0) > 0)
+              .map((o) => `${o.label} × ${sizeQuantities[o.value]}`)
+              .join(", ")}`
+          : selectedSizeLabel && sizeVariant
+            ? `${sizeVariant.name}: ${selectedSizeLabel}`
+            : undefined,
       ].filter(Boolean);
       const optionNote = optionNotes.length ? optionNotes.join("; ") : undefined;
       const res = await fetch("/api/customize/checkout", {
@@ -735,7 +762,7 @@ export function ProductCustomizeForm({ product, monerisMode = "qa" }: ProductCus
           <p className="text-sm text-amber-200">This product is temporarily out of stock for all options.</p>
         )}
 
-        {sizeVariant && sizeChoices.length > 0 && (
+        {sizeVariant && sizeChoices.length > 0 && !useSizeGrid && (
           <div className="max-w-md">
             <label htmlFor="product-size" className="mb-1 block text-sm font-medium text-pure-paper">
               {sizeVariant.name}
@@ -958,18 +985,22 @@ export function ProductCustomizeForm({ product, monerisMode = "qa" }: ProductCus
             />
           </div>
 
-          <div>
-            <label className="mb-1 block text-sm font-medium text-pure-paper">Quantity</label>
-            <input
-              type="number"
-              min={product.minQuantity}
-              className={cn(fieldClass, "w-28")}
-              value={form.quantity}
-              onChange={(e) =>
-                setForm({ ...form, quantity: parseInt(e.target.value, 10) || product.minQuantity })
-              }
+          {useSizeGrid ? (
+            <SizeQuantityGrid
+              sizes={sizeChoices.map((o) => ({ value: o.value, label: o.label }))}
+              quantities={sizeQuantities}
+              onChange={setSizeQuantities}
+              minTotal={product.minQuantity || 1}
+              unitHint={`${formatCurrency(basePrice, product.currency)} each`}
             />
-          </div>
+          ) : (
+            <QuantityPicker
+              value={form.quantity}
+              min={product.minQuantity || 1}
+              onChange={(quantity) => setForm({ ...form, quantity })}
+              unitHint={`${formatCurrency(basePrice, product.currency)} each`}
+            />
+          )}
 
           {isCalendar ? (
             <CalendarArtworkUpload
@@ -1047,9 +1078,6 @@ export function ProductCustomizeForm({ product, monerisMode = "qa" }: ProductCus
               onChange={(value) => setForm((prev) => ({ ...prev, address1: value }))}
               onAddressSelect={(addr) => {
                 const verifiedPostal = formatCanadianPostalCode(addr.postalCode || "");
-                setPostalSuggestion(
-                  verifiedPostal ? null : formatCanadianPostalCode(addr.postalCodeSuggestion || "")
-                );
                 setForm((prev) => {
                   // Map-data postal codes are not trusted: clear the old one instead of keeping a
                   // code that belongs to the previous address.
@@ -1105,25 +1133,18 @@ export function ProductCustomizeForm({ product, monerisMode = "qa" }: ProductCus
                   }
                 }}
               />
-              {postalSuggestion && formatCanadianPostalCode(form.postalCode) !== postalSuggestion && (
-                <p className="mt-1 text-xs text-amber-200">
-                  Map data suggests {postalSuggestion} for this address (not verified).{" "}
-                  <button
-                    type="button"
-                    className="underline hover:text-pure-paper"
-                    onClick={() =>
-                      setForm((prev) => ({
-                        ...prev,
-                        postalCode: postalSuggestion,
-                        province: provinceFromPostalCode(postalSuggestion) || prev.province,
-                      }))
-                    }
-                  >
-                    Use it
-                  </button>
-                  . Please check it against your mail.
-                </p>
-              )}
+              <p className="mt-1 text-xs text-chrome-mid">
+                Not sure of your postal code?{" "}
+                <a
+                  href="https://www.canadapost-postescanada.ca/cpc/en/tools/find-a-postal-code.page"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline hover:text-pure-paper"
+                >
+                  Look it up on Canada Post
+                </a>
+                .
+              </p>
               {formatCanadianPostalCode(form.postalCode) !== null &&
                 !postalMatchesProvince(form.postalCode, form.province) && (
                   <p className="mt-1 text-xs text-red-300">
