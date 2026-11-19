@@ -348,7 +348,7 @@ export function ProductMockupPreview({
                       key={`${url}-${index}`}
                       src={url}
                       alt={`Artwork ${index + 1}`}
-                      className="h-full w-full bg-white object-cover"
+                      className="h-full w-full bg-white object-contain"
                     />
                   ))}
                 </div>

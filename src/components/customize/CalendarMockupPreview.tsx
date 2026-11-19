@@ -53,7 +53,7 @@ export function CalendarMockupPreview({
                 <img
                   src={activeImage}
                   alt={`${CALENDAR_MONTHS[safeMonth]} artwork`}
-                  className="h-full w-full object-cover"
+                  className="h-full w-full object-contain"
                 />
               ) : (
                 <div className="flex h-full flex-col items-center justify-center gap-2 bg-gradient-to-br from-[#f5f5f5] to-[#e8e8e8] p-6 text-center">
@@ -108,7 +108,7 @@ export function CalendarMockupPreview({
                   <div className="relative aspect-square bg-[#12141c]">
                     {url ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={url} alt={month} className="h-full w-full object-cover" />
+                      <img src={url} alt={month} className="h-full w-full object-contain" />
                     ) : (
                       <div className="flex h-full items-center justify-center bg-white/5 p-1 text-center text-[9px] text-chrome-mid">
                         {month.slice(0, 3)}

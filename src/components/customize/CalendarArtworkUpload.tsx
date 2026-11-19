@@ -162,7 +162,7 @@ export function CalendarArtworkUpload({
                   <img
                     src={item.previewUrl}
                     alt={`${month} photo`}
-                    className="h-full w-full object-cover"
+                    className="h-full w-full object-contain"
                   />
                 ) : (
                   <div className="flex h-full items-center justify-center p-2 text-center text-[10px] text-chrome-mid">
